@@ -1,6 +1,8 @@
 {
   "name": "pos-frontend",
   "version": "0.1.0",
+  "main": "build/electron.js",
+  "homepage": "./",
   "private": true,
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.1",
@@ -27,15 +29,11 @@
     "react-to-print": "^3.2.0",
     "web-vitals": "^2.1.4"
   },
-  "main": "public/electron.js",
   "build": {
-    "appId": "com.yourcompany.pos",
-    "productName": "My POS",
+    "appId": "ZDigital",
+    "productName": "ZDigitalPOS",
     "files": [
       "build/**/*",
-      "public/electron.js",
-      "public/preload.js",
-      "public/localdb.js",
       "node_modules/**/*",
       "package.json"
     ],
@@ -46,14 +44,21 @@
       "target": "nsis"
     }
   },
+  "extraResources": [
+    {
+      "from": "public/locales",
+      "to": "locales"
+    }
+  ],
   "scripts": {
     "electron": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder",
+    "dist": "npm run build && electron-builder",
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts build && node copy-electron-files.js",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "postinstall": "electron-builder install-app-deps"
   },
   "eslintConfig": {
     "extends": [
@@ -77,6 +82,7 @@
     "autoprefixer": "^10.4.21",
     "electron": "^38.4.0",
     "electron-builder": "^26.0.12",
+    "fs-extra": "^11.3.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.3.5"
   }

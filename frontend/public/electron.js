@@ -1,11 +1,12 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 
-// Import the localdb functions (adjust path as necessary)
-const localdb = require(path.join(__dirname, "..", "build", "localdb.js"));
+const localdb = require(path.join(__dirname, "localdb.js"));
+
+let mainWindow;
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     kiosk: true,            // Enables kiosk mode - full screen, no exit bar
@@ -22,9 +23,13 @@ function createWindow() {
     },
   });
 
-  //win.loadFile(path.join(__dirname, "..", "build", "index.html"));
-  win.loadURL("http://localhost:3000");
-  win.setMenuBarVisibility(false);
+  mainWindow.loadFile(path.join(__dirname, "index.html"));
+  //win.loadURL("http://localhost:3000");
+  mainWindow.setMenuBarVisibility(false);
+  
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+  console.error('Failed to load:', errorCode, errorDescription);
+});
 }
 
 app.whenReady().then(createWindow);
@@ -38,18 +43,14 @@ app.on("activate", () => {
 });
 
 // --- IPC HANDLERS FOR OFFLINE SALES SYNC ---
-// Save sale offline
 ipcMain.on("saveSale", (event, salePayload) => {
   localdb.saveOfflineSale(salePayload);
-  // Optionally, send back a response: event.reply('saveSaleComplete');
 });
 
-// Sync offline sales when online
 ipcMain.on("syncSales", async (event) => {
   const unsyncedSales = localdb.getUnsyncedSales();
   for (const sale of unsyncedSales) {
     try {
-      // Send to backend API (replace URL below!)
       const response = await fetch("http://localhost:5000/api/sale", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,19 +60,19 @@ ipcMain.on("syncSales", async (event) => {
         localdb.markSaleAsSynced(sale.id);
       }
     } catch (err) {
-      // Handle sync error, optional logging
+      console.error("Sync error:", err);
     }
   }
   event.sender.send("syncComplete");
 });
 
-// Cache products from server
 ipcMain.on("cacheProducts", (event, products) => {
   localdb.cacheProducts(products);
-  // Optional: event.reply('cacheProductsComplete');
 });
 
-// Get cached products for offline use
 ipcMain.handle("getCachedProducts", async () => {
   return localdb.getCachedProducts();
 });
+
+console.log("App Path:", app.getAppPath());
+console.log("Index Path:", path.join(__dirname, "index.html"));
