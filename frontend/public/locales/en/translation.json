@@ -1,0 +1,14 @@
+{
+  "bill": {
+    "title": "Receipt",
+    "total": "Total Amount",
+    "change": "Change",
+    "thankYou": "Thank you!"
+  },
+  "ui": {
+    "login": "Login",
+    "logout": "Logout",
+    "admin": "Admin",
+    "cashier": "Cashier"
+  }
+}

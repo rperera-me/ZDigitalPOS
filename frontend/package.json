@@ -1,0 +1,83 @@
+{
+  "name": "pos-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.9.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.12.2",
+    "better-sqlite3": "^12.4.1",
+    "clsx": "^2.1.1",
+    "escpos": "^3.0.0-alpha.6",
+    "handlebars": "^4.7.8",
+    "i18next": "^23.10.0",
+    "i18next-browser-languagedetector": "^8.2.0",
+    "i18next-http-backend": "^3.0.2",
+    "jwt-decode": "^4.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-i18next": "^13.2.2",
+    "react-modal": "^3.16.3",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.9.4",
+    "react-scripts": "5.0.1",
+    "react-to-print": "^3.2.0",
+    "web-vitals": "^2.1.4"
+  },
+  "main": "public/electron.js",
+  "build": {
+    "appId": "com.yourcompany.pos",
+    "productName": "My POS",
+    "files": [
+      "build/**/*",
+      "public/electron.js",
+      "public/preload.js",
+      "public/localdb.js",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "scripts": {
+    "electron": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.3.5"
+  }
+}

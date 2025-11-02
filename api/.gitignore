@@ -1,0 +1,60 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+bin/
+obj/
+artifacts/
+
+# Rider
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# User secrets (if used)
+secrets.json
+
+# NuGet packages (usually restored automatically)
+*.nupkg
+*.snupkg
+packages/
+
+# ASP.NET Core runtime files
+appsettings.*.json
+
+# VS Code settings
+.vscode/
+
+# Resharper
+_ReSharper*/
+*.ReSharper.*
+
+# Entity Framework Core Migrations (optional)
+Migrations/
+
+# dotCover
+*.dotCover
+
+# Coverage
+coverage*.json
+coverage*.xml
+coverage*.info
+coverage*.lcov
+
+# Publish artifacts
+publish/
+
+# JetBrains Rider local history
+.idea/
+
+# Docker files
+docker-compose.override.yml

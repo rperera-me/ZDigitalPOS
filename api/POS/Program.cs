@@ -1,0 +1,123 @@
+using Microsoft.OpenApi.Models;
+using POS.Application.Commands.Categories;
+using POS.Application.Queries.Categories;
+using POS.Infrastructure.Repositories;
+using PosSystem.Application.Commands.Customers;
+using PosSystem.Application.Commands.Products;
+using PosSystem.Application.Commands.Sales;
+using PosSystem.Application.Commands.Users;
+using PosSystem.Application.Queries.Customers;
+using PosSystem.Application.Queries.Products;
+using PosSystem.Application.Queries.Sales;
+using PosSystem.Application.Queries.Users;
+using PosSystem.Domain.Repositories;
+using PosSystem.Hubs;
+using PosSystem.Infrastructure.Context;
+using PosSystem.Infrastructure.Repositories;
+using PosSystem.Middleware;
+using System.Reflection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "POS API", Version = "v1" });
+});
+
+// Register Dapper context
+builder.Services.AddSingleton<DapperContext>();
+
+// Register repositories
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+
+// Register MediatR for CQRS handlers
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly())
+);
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssemblies(
+        typeof(CreateProductCommand).Assembly,
+        typeof(DeleteProductCommand).Assembly,
+        typeof(UpdateProductCommand).Assembly,
+
+        typeof(CreateCategoryCommand).Assembly,
+        typeof(UpdateCategoryCommand).Assembly,
+        typeof(DeleteCategoryCommand).Assembly,
+
+        typeof(CreateCustomerCommand).Assembly,
+        typeof(DeleteCustomerCommand).Assembly,
+        typeof(UpdateCustomerCommand).Assembly,
+
+        typeof(CreateSaleCommand).Assembly,
+        typeof(CompleteSaleCommand).Assembly,
+        typeof(HoldSaleCommand).Assembly,
+        typeof(UpdateSaleCommand).Assembly,
+
+        typeof(CreateUserCommand).Assembly,
+        typeof(AuthenticateUserCommand).Assembly,
+        typeof(UpdateUserCommand).Assembly,
+
+        typeof(GetAllCustomersQuery).Assembly,
+        typeof(GetCustomerByIdQuery).Assembly,
+
+        typeof(GetAllProductsQuery).Assembly,
+        typeof(GetProductByIdQuery).Assembly,
+        typeof(GetProductsByCategoryQuery).Assembly,
+
+        typeof(GetCategoryByIdQuery).Assembly,
+        typeof(GetAllCategoriesQuery).Assembly,
+
+        typeof(GetSaleByIdQuery).Assembly,
+        typeof(GetSalesByCashierQuery).Assembly,
+        typeof(GetSalesByDateRangeQuery).Assembly,
+        typeof(GetHeldSalesQuery).Assembly,
+
+        typeof(GetUserByIdQuery).Assembly,
+        typeof(GetUserByUsernameQuery).Assembly
+    )
+);
+
+
+// Configure CORS (modify origins as needed)
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();
+    });
+});
+
+builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
+
+var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "POS API v1");
+        c.RoutePrefix = string.Empty; // Optional: Swagger UI at application root
+    });
+}
+
+app.UseCors();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapHub<PosHub>("/posHub");
+app.MapControllers();
+
+app.Run();
