@@ -26,10 +26,15 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "index.html"));
   //win.loadURL("http://localhost:3000");
   mainWindow.setMenuBarVisibility(false);
-  
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-  console.error('Failed to load:', errorCode, errorDescription);
-});
+
+  mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+    console.error("❌ LOAD FAILED");
+    console.error("Error Code:", errorCode);
+    console.error("Description:", errorDescription);
+    console.error("URL:", validatedURL);
+    console.error("__dirname:", __dirname);
+    console.error("index.html exists?", require("fs").existsSync(path.join(__dirname, "index.html")));
+  });
 }
 
 app.whenReady().then(createWindow);
@@ -41,6 +46,11 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
+// Add logging to verify paths
+console.log("App Path:", app.getAppPath());
+console.log("__dirname:", __dirname);
+console.log("index.html Path:", path.join(__dirname, "index.html"));
 
 // --- IPC HANDLERS FOR OFFLINE SALES SYNC ---
 ipcMain.on("saveSale", (event, salePayload) => {
