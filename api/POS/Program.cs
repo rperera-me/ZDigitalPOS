@@ -1,6 +1,11 @@
 using Microsoft.OpenApi.Models;
 using POS.Application.Commands.Categories;
+using POS.Application.Commands.GRN;
+using POS.Application.Commands.Suppliers;
 using POS.Application.Queries.Categories;
+using POS.Application.Queries.Products;
+using POS.Application.Queries.Suppliers;
+using POS.Domain.Repositories;
 using POS.Infrastructure.Repositories;
 using PosSystem.Application.Commands.Customers;
 using PosSystem.Application.Commands.Products;
@@ -37,6 +42,9 @@ builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+builder.Services.AddScoped<IProductBatchRepository, ProductBatchRepository>();
+builder.Services.AddScoped<IGRNRepository, GRNRepository>();
 
 // Register MediatR for CQRS handlers
 builder.Services.AddMediatR(cfg =>
@@ -71,6 +79,7 @@ builder.Services.AddMediatR(cfg =>
         typeof(GetAllProductsQuery).Assembly,
         typeof(GetProductByIdQuery).Assembly,
         typeof(GetProductsByCategoryQuery).Assembly,
+        typeof(GetProductBatchesQuery).Assembly,
 
         typeof(GetCategoryByIdQuery).Assembly,
         typeof(GetAllCategoriesQuery).Assembly,
@@ -81,7 +90,12 @@ builder.Services.AddMediatR(cfg =>
         typeof(GetHeldSalesQuery).Assembly,
 
         typeof(GetUserByIdQuery).Assembly,
-        typeof(GetUserByUsernameQuery).Assembly
+        typeof(GetUserByUsernameQuery).Assembly,
+
+        typeof(CreateSupplierCommand).Assembly,
+        typeof(GetAllSuppliersQuery).Assembly,
+
+        typeof(CreateGRNCommand).Assembly
     )
 );
 

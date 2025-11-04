@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using POS.Application.DTOs;
 using POS.Application.Queries.Products;
 using PosSystem.Application.Commands.Products;
 using PosSystem.Application.DTOs;
@@ -66,6 +67,13 @@ namespace PosSystem.Controllers
         {
             await _mediator.Send(new DeleteProductCommand { Id = id });
             return NoContent();
+        }
+
+        [HttpGet("{id}/batches")]
+        public async Task<ActionResult<IEnumerable<ProductBatchDto>>> GetProductBatches(int id)
+        {
+            var batches = await _mediator.Send(new GetProductBatchesQuery { ProductId = id });
+            return Ok(batches);
         }
     }
 }
