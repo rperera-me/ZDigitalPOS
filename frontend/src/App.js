@@ -4,13 +4,14 @@ import LoginPage from "./pages/LoginPage";
 import CashierPage from "./pages/CashierPage";
 import AdminPage from "./pages/AdminPage";
 import CategoriesPage from "./pages/AdminCategoriesPage";
-import SuppliersPage from "./pages/AdminProductsPage";
 import ProductsPage from "./pages/AdminProductsPage";
 import CustomersPage from "./pages/AdminCustomersPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardPage from "./pages/DashboardPage";
 import NavigationBar from "./components/NavigationBar";
+import GRNPage from "./pages/GRNPage";
+import AdminSuppliersPage from "./pages/AdminSuppliersPage";
 
 // Layout wrapper to include navigation bar for pages that need it
 function MainLayout({ children }) {
@@ -59,17 +60,6 @@ export default function App() {
       />
 
       <Route
-        path="/suppliers"
-        element={
-          <ProtectedRoute roles={["admin"]}>
-            <MainLayout>
-              <SuppliersPage />
-            </MainLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/customers"
         element={
           <ProtectedRoute roles={["admin"]}>
@@ -97,6 +87,28 @@ export default function App() {
           <ProtectedRoute roles={["admin"]}>
             <MainLayout>
               <ProductsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/suppliers"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <MainLayout>
+              <AdminSuppliersPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/grn"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <MainLayout>
+              <GRNPage />
             </MainLayout>
           </ProtectedRoute>
         }

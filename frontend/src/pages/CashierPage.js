@@ -19,6 +19,7 @@ import ReceiptModal from "../components/receipt/ReceiptPreviewModal";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import storeSetting from "../config/storeSettings";
+import BatchSelectionModal from "../components/BatchSelectionModal";
 
 export default function CashierPage() {
   const dispatch = useDispatch();
@@ -50,6 +51,10 @@ export default function CashierPage() {
   const [lastSale, setLastSale] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [barcodeQuantity, setBarcodeQuantity] = useState(1);
+
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productBatches, setProductBatches] = useState([]);
 
   // Filtered products with search
   const filteredProducts = useMemo(() => {
@@ -146,25 +151,69 @@ export default function CashierPage() {
 
   // Sale item handlers
   function onAddProduct(product) {
+    // Check if product has multiple batches
+    if (product.hasMultipleBatches) {
+      // Fetch batches and show modal
+      api.get(`/product/${product.id}/batches`)
+        .then((res) => {
+          if (res.data && res.data.length > 0) {
+            setProductBatches(res.data);
+            setSelectedProduct(product);
+            setShowBatchModal(true);
+          } else {
+            // No active batches, use default price
+            dispatch(
+              addSaleItem({
+                productId: product.id,
+                batchId: null,
+                name: product.name,
+                price: product.priceRetail,
+                quantity: 1,
+              })
+            );
+          }
+        })
+        .catch(() => {
+          alert("Failed to load batches");
+        });
+    } else {
+      // Single batch or no batch system
+      dispatch(
+        addSaleItem({
+          productId: product.id,
+          batchId: null,
+          name: product.name,
+          price: product.priceRetail,
+          quantity: 1,
+        })
+      );
+    }
+  }
+
+  function onRemoveSaleItem(productId, batchId) {
+    dispatch(removeSaleItem({ productId, batchId }));
+  }
+
+  function onUpdateQuantity(productId, batchId, quantity) {
+    if (quantity < 1) return;
+    dispatch(updateQuantity({ productId, batchId, quantity }));
+  }
+
+  function handleBatchSelect(batch, quantity) {
     dispatch(
       addSaleItem({
-        productId: product.id,
-        name: product.name,
-        price: product.priceRetail,
-        quantity: 1,
+        productId: selectedProduct.id,
+        batchId: batch.id,
+        name: selectedProduct.name,
+        batchNumber: batch.batchNumber,
+        price: batch.sellingPrice,
+        quantity: quantity,
       })
     );
+    setShowBatchModal(false);
+    setSelectedProduct(null);
+    setProductBatches([]);
   }
-
-  function onRemoveSaleItem(productId) {
-    dispatch(removeSaleItem(productId));
-  }
-
-  function onUpdateQuantity(productId, quantity) {
-    if (quantity < 1) return;
-    dispatch(updateQuantity({ productId, quantity }));
-  }
-
   // Update the handleBarcodeAdd function to use quantity
   function handleBarcodeAdd(barcode) {
     const code = barcode || barcodeInput.trim();
@@ -635,19 +684,24 @@ export default function CashierPage() {
               </thead>
               <tbody>
                 {saleItems.map((item) => (
-                  <tr key={item.productId} className="border-b hover:bg-gray-100">
-                    <td className="p-1 text-xs">{item.name}</td>
+                  <tr key={`${item.productId}-${item.batchId || 'default'}`} className="border-b hover:bg-gray-100">
+                    <td className="p-1 text-xs">
+                      {item.name}
+                      {item.batchNumber && (
+                        <div className="text-xs text-gray-500">Batch: {item.batchNumber}</div>
+                      )}
+                    </td>
                     <td className="text-center p-1">
                       <div className="flex items-center justify-center gap-0.5">
                         <button
-                          onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
+                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.quantity - 1)}
                           className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
                         >
                           −
                         </button>
                         <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
                         <button
-                          onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
+                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.quantity + 1)}
                           className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
                         >
                           +
@@ -658,7 +712,7 @@ export default function CashierPage() {
                     <td className="text-right p-1 font-semibold text-xs">Rs {(item.price * item.quantity).toFixed(2)}</td>
                     <td className="p-1 text-center">
                       <button
-                        onClick={() => onRemoveSaleItem(item.productId)}
+                        onClick={() => onRemoveSaleItem(item.productId, item.batchId)}
                         className="text-red-600 hover:text-red-800"
                         title="Delete"
                       >
@@ -1055,6 +1109,19 @@ export default function CashierPage() {
           </div>
         )
       }
+
+      {/* Batch Selection Modal */}
+      <BatchSelectionModal
+        isOpen={showBatchModal}
+        onClose={() => {
+          setShowBatchModal(false);
+          setSelectedProduct(null);
+          setProductBatches([]);
+        }}
+        product={selectedProduct}
+        batches={productBatches}
+        onSelectBatch={handleBatchSelect}
+      />
     </div >
   );
 }

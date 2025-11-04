@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   categories: [],
   products: [],
+  suppliers: [], // New
   saleItems: [],
   holdSales: [],
   customers: [],
@@ -10,6 +11,9 @@ const initialState = {
   paymentMethod: "Cash",
   cashGiven: "",
   selectedCategoryId: null,
+  selectedBatch: null, // New
+  showBatchModal: false, // New
+  currentProduct: null, // New
 };
 
 const posSlice = createSlice({
@@ -22,9 +26,14 @@ const posSlice = createSlice({
     setProducts: (state, action) => {
       state.products = action.payload;
     },
+    setSuppliers: (state, action) => { // New
+      state.suppliers = action.payload;
+    },
     addSaleItem: (state, action) => {
       const item = action.payload;
-      const existing = state.saleItems.find(i => i.productId === item.productId);
+      const existing = state.saleItems.find(i => 
+        i.productId === item.productId && i.batchId === item.batchId
+      );
       if (existing) {
         existing.quantity += item.quantity;
       } else {
@@ -32,11 +41,15 @@ const posSlice = createSlice({
       }
     },
     removeSaleItem: (state, action) => {
-      state.saleItems = state.saleItems.filter(i => i.productId !== action.payload);
+      state.saleItems = state.saleItems.filter(i => 
+        !(i.productId === action.payload.productId && i.batchId === action.payload.batchId)
+      );
     },
     updateQuantity: (state, action) => {
-      const { productId, quantity } = action.payload;
-      const item = state.saleItems.find(i => i.productId === productId);
+      const { productId, batchId, quantity } = action.payload;
+      const item = state.saleItems.find(i => 
+        i.productId === productId && i.batchId === batchId
+      );
       if (item) {
         item.quantity = quantity;
       }
@@ -46,6 +59,9 @@ const posSlice = createSlice({
       state.currentCustomer = null;
       state.paymentMethod = "Cash";
       state.cashGiven = "";
+      state.selectedBatch = null;
+      state.showBatchModal = false;
+      state.currentProduct = null;
     },
     setHoldSales: (state, action) => {
       state.holdSales = action.payload;
@@ -65,12 +81,22 @@ const posSlice = createSlice({
     setCategoryId: (state, action) => {
       state.selectedCategoryId = action.payload;
     },
+    setShowBatchModal: (state, action) => { // New
+      state.showBatchModal = action.payload;
+    },
+    setCurrentProduct: (state, action) => { // New
+      state.currentProduct = action.payload;
+    },
+    setSelectedBatch: (state, action) => { // New
+      state.selectedBatch = action.payload;
+    },
   },
 });
 
 export const {
   setCategories,
   setProducts,
+  setSuppliers,
   addSaleItem,
   removeSaleItem,
   updateQuantity,
@@ -81,6 +107,9 @@ export const {
   setPaymentMethod,
   setCashGiven,
   setCategoryId,
+  setShowBatchModal,
+  setCurrentProduct,
+  setSelectedBatch,
 } = posSlice.actions;
 
 export default posSlice.reducer;

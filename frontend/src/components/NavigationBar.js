@@ -5,7 +5,8 @@ import { useSelector } from "react-redux";
 const allNavItems = [
   { label: "Dashboard", icon: "/icons/dashboard.png", path: "/dashboard" },
   { label: "Sale", icon: "/icons/sale.png", path: "/cashier" },
-  { label: "Suppliers", icon: "/icons/quotation.png", path: "/suppliers" },
+  { label: "Suppliers", icon: "/icons/supplier.png", path: "/suppliers" }, // New
+  { label: "GRN", icon: "/icons/grn.png", path: "/grn" }, // New
   { label: "Customers", icon: "/icons/stock.png", path: "/customers" },
   { label: "Categories", icon: "/icons/stock.png", path: "/categories" },
   { label: "Products", icon: "/icons/stock.png", path: "/products" },
