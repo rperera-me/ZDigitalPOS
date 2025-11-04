@@ -15,9 +15,9 @@ export default function AdminProductsPage() {
   const [priceWholesale, setPriceWholesale] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [supplierId, setSupplierId] = useState(""); // New
+  const [supplierId, setSupplierId] = useState("");
 
-  // Batch fields (optional for initial product creation)
+  // Batch fields
   const [batchNumber, setBatchNumber] = useState("");
   const [costPrice, setCostPrice] = useState("");
   const [manufactureDate, setManufactureDate] = useState("");
@@ -25,12 +25,27 @@ export default function AdminProductsPage() {
 
   const [viewBatchesProductId, setViewBatchesProductId] = useState(null);
   const [batches, setBatches] = useState([]);
+  const [barcodeScanned, setBarcodeScanned] = useState("");
 
   useEffect(() => {
     api.get("/category").then((res) => dispatch(setCategories(res.data)));
     api.get("/product").then((res) => dispatch(setProducts(res.data)));
     api.get("/supplier").then((res) => dispatch(setSuppliers(res.data)));
   }, [dispatch]);
+
+  // Auto-generate barcode if empty
+  const generateBarcode = () => {
+    const randomBarcode = "PRD" + Date.now().toString().slice(-10);
+    setBarcode(randomBarcode);
+  };
+
+  // Barcode scanner
+  const handleBarcodeInput = (e) => {
+    if (e.key === "Enter") {
+      setBarcode(barcodeScanned);
+      setBarcodeScanned("");
+    }
+  };
 
   const resetForm = () => {
     setName("");
@@ -89,17 +104,54 @@ export default function AdminProductsPage() {
 
   return (
     <div className="p-8">
-      <h2 className="text-2xl font-bold mb-4">Product Management</h2>
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold text-gray-800 mb-2">Product Management</h2>
+        <p className="text-gray-600">Manage your inventory and product catalog</p>
+      </div>
 
-      <div className="bg-white rounded shadow p-6 mb-6">
-        <h3 className="text-xl font-semibold mb-4">Add New Product</h3>
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Add New Product
+        </h3>
+
+        {/* Barcode Scanner Section */}
+        <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+          <label className="block text-sm font-medium mb-2 text-blue-900 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+            Barcode Scanner
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 border-2 border-blue-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+              placeholder="Scan or enter barcode..."
+              value={barcodeScanned}
+              onChange={(e) => setBarcodeScanned(e.target.value)}
+              onKeyDown={handleBarcodeInput}
+            />
+            <button
+              onClick={() => {
+                setBarcode(barcodeScanned);
+                setBarcodeScanned("");
+              }}
+              className="bg-blue-600 text-white px-6 rounded-lg hover:bg-blue-700 transition font-semibold"
+            >
+              Use Barcode
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Product Name *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Product Name *</label>
             <input
               type="text"
-              className="w-full border p-2 rounded"
+              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
               placeholder="Product Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -107,20 +159,31 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Barcode *</label>
-            <input
-              type="text"
-              className="w-full border p-2 rounded"
-              placeholder="Barcode"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-            />
+            <label className="block text-sm font-medium mb-1 text-gray-700">Barcode *</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="flex-1 border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                placeholder="Barcode"
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+              />
+              <button
+                onClick={generateBarcode}
+                className="bg-gray-500 text-white px-3 rounded-lg hover:bg-gray-600 transition text-sm"
+                title="Auto-generate barcode"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Category *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Category *</label>
             <select
-              className="w-full border p-2 rounded"
+              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
             >
@@ -134,9 +197,9 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Default Supplier</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Default Supplier</label>
             <select
-              className="w-full border p-2 rounded"
+              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
             >
@@ -150,10 +213,10 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Retail Price *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Retail Price *</label>
             <input
               type="number"
-              className="w-full border p-2 rounded"
+              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
               placeholder="Retail Price"
               value={priceRetail}
               onChange={(e) => setPriceRetail(e.target.value)}
@@ -163,10 +226,10 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Wholesale Price</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Wholesale Price</label>
             <input
               type="number"
-              className="w-full border p-2 rounded"
+              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
               placeholder="Wholesale Price"
               value={priceWholesale}
               onChange={(e) => setPriceWholesale(e.target.value)}
@@ -176,10 +239,10 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Stock Quantity</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Stock Quantity</label>
             <input
               type="number"
-              className="w-full border p-2 rounded"
+              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
               placeholder="Stock Qty"
               value={stockQuantity}
               onChange={(e) => setStockQuantity(e.target.value)}
@@ -188,14 +251,19 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        <div className="border-t pt-4 mt-4">
-          <h4 className="font-semibold mb-2 text-gray-700">Optional: Initial Batch Details</h4>
+        <div className="border-t-2 border-gray-200 pt-4 mt-4">
+          <h4 className="font-semibold mb-3 text-gray-700 flex items-center gap-2">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Optional: Initial Batch Details
+          </h4>
           <div className="grid grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Batch Number</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Batch Number</label>
               <input
                 type="text"
-                className="w-full border p-2 rounded"
+                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
                 placeholder="Batch Number"
                 value={batchNumber}
                 onChange={(e) => setBatchNumber(e.target.value)}
@@ -203,10 +271,10 @@ export default function AdminProductsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Cost Price</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Cost Price</label>
               <input
                 type="number"
-                className="w-full border p-2 rounded"
+                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
                 placeholder="Cost Price"
                 value={costPrice}
                 onChange={(e) => setCostPrice(e.target.value)}
@@ -216,20 +284,20 @@ export default function AdminProductsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Manufacture Date</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Manufacture Date</label>
               <input
                 type="date"
-                className="w-full border p-2 rounded"
+                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
                 value={manufactureDate}
                 onChange={(e) => setManufactureDate(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Expiry Date</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">Expiry Date</label>
               <input
                 type="date"
-                className="w-full border p-2 rounded"
+                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
               />
@@ -237,57 +305,78 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-6 flex gap-3">
           <button
             onClick={addProduct}
-            className="bg-green-600 text-white rounded px-6 py-2 hover:bg-green-700"
+            className="flex-1 bg-green-600 text-white rounded-lg px-6 py-3 hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             Add Product
+          </button>
+          <button
+            onClick={resetForm}
+            className="bg-gray-300 text-gray-700 rounded-lg px-6 py-3 hover:bg-gray-400 transition font-semibold"
+          >
+            Clear Form
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded shadow p-6">
-        <h3 className="text-xl font-semibold mb-4">Products List</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full border border-collapse table-auto text-left text-sm">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border px-2 py-1">ID</th>
-                <th className="border px-2 py-1">Name</th>
-                <th className="border px-2 py-1">Barcode</th>
-                <th className="border px-2 py-1">Category</th>
-                <th className="border px-2 py-1">Supplier</th>
-                <th className="border px-2 py-1">Retail Price</th>
-                <th className="border px-2 py-1">Wholesale Price</th>
-                <th className="border px-2 py-1">Stock Qty</th>
-                <th className="border px-2 py-1">Multi-Batch</th>
-                <th className="border px-2 py-1">Actions</th>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          Products List
+          <span className="ml-auto text-sm font-normal text-gray-500">
+            {products.length} products
+          </span>
+        </h3>
+        <div className="overflow-x-auto border-2 border-gray-200 rounded-lg">
+          <table className="w-full">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-3 text-left text-sm font-semibold">ID</th>
+                <th className="p-3 text-left text-sm font-semibold">Name</th>
+                <th className="p-3 text-left text-sm font-semibold">Barcode</th>
+                <th className="p-3 text-left text-sm font-semibold">Category</th>
+                <th className="p-3 text-left text-sm font-semibold">Supplier</th>
+                <th className="p-3 text-right text-sm font-semibold">Retail Price</th>
+                <th className="p-3 text-right text-sm font-semibold">Wholesale Price</th>
+                <th className="p-3 text-center text-sm font-semibold">Stock Qty</th>
+                <th className="p-3 text-center text-sm font-semibold">Multi-Batch</th>
+                <th className="p-3 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {products.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="border px-2 py-1">{p.id}</td>
-                  <td className="border px-2 py-1">{p.name}</td>
-                  <td className="border px-2 py-1">{p.barcode}</td>
-                  <td className="border px-2 py-1">{p.categoryName || ""}</td>
-                  <td className="border px-2 py-1">{p.defaultSupplierName || "-"}</td>
-                  <td className="border px-2 py-1">Rs {p.priceRetail.toFixed(2)}</td>
-                  <td className="border px-2 py-1">Rs {p.priceWholesale.toFixed(2)}</td>
-                  <td className="border px-2 py-1 text-center">{p.stockQuantity}</td>
-                  <td className="border px-2 py-1 text-center">
+                <tr key={p.id} className="border-t hover:bg-gray-50">
+                  <td className="p-3 text-sm">{p.id}</td>
+                  <td className="p-3 text-sm font-medium">{p.name}</td>
+                  <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
+                  <td className="p-3 text-sm">{p.categoryName || ""}</td>
+                  <td className="p-3 text-sm">{p.defaultSupplierName || "-"}</td>
+                  <td className="p-3 text-right font-semibold">Rs {p.priceRetail.toFixed(2)}</td>
+                  <td className="p-3 text-right">Rs {p.priceWholesale.toFixed(2)}</td>
+                  <td className="p-3 text-center">
+                    <span className={`px-2 py-1 rounded text-sm font-semibold ${p.stockQuantity <= 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                      {p.stockQuantity}
+                    </span>
+                  </td>
+                  <td className="p-3 text-center">
                     {p.hasMultipleBatches ? (
-                      <span className="text-green-600 font-semibold">Yes</span>
+                      <span className="text-green-600 font-semibold">✓ Yes</span>
                     ) : (
                       <span className="text-gray-400">No</span>
                     )}
                   </td>
-                  <td className="border px-2 py-1 text-center">
+                  <td className="p-3 text-center">
                     {p.hasMultipleBatches && (
                       <button
                         onClick={() => viewBatches(p.id)}
-                        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-xs"
+                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm font-semibold"
                       >
                         View Batches
                       </button>

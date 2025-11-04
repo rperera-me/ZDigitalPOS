@@ -16,6 +16,7 @@ export default function GRNPage() {
 
     // Item form
     const [selectedProductId, setSelectedProductId] = useState("");
+    const [barcodeInput, setBarcodeInput] = useState("");
     const [batchNumber, setBatchNumber] = useState("");
     const [quantity, setQuantity] = useState("");
     const [costPrice, setCostPrice] = useState("");
@@ -32,6 +33,25 @@ export default function GRNPage() {
 
     const fetchGRNs = () => {
         api.get("/grn").then((res) => setGrns(res.data));
+    };
+
+    const handleBarcodeSearch = () => {
+        if (!barcodeInput.trim()) return;
+        
+        api.get(`/product/barcode/${barcodeInput.trim()}`)
+            .then((res) => {
+                if (res.data) {
+                    setSelectedProductId(res.data.id.toString());
+                    setBarcodeInput("");
+                    // Optionally auto-fill wholesale price
+                    if (res.data.priceWholesale) {
+                        setWholesalePrice(res.data.priceWholesale.toString());
+                    }
+                } else {
+                    alert("Product not found with this barcode");
+                }
+            })
+            .catch(() => alert("Error searching for product"));
     };
 
     const addItem = () => {
@@ -107,21 +127,29 @@ export default function GRNPage() {
 
     return (
         <div className="p-8">
-            <h2 className="text-2xl font-bold mb-4">Goods Received Note (GRN)</h2>
+            <div className="mb-6">
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">Goods Received Note (GRN)</h2>
+                <p className="text-gray-600">Record incoming inventory from suppliers</p>
+            </div>
 
             <div className="grid grid-cols-3 gap-6">
                 {/* GRN Form */}
                 <div className="col-span-2">
-                    <div className="bg-white rounded shadow p-6 mb-6">
-                        <h3 className="text-xl font-semibold mb-4">Create New GRN</h3>
+                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Create New GRN
+                        </h3>
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Supplier *</label>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Supplier *</label>
                                 <select
                                     value={supplierId}
                                     onChange={(e) => setSupplierId(e.target.value)}
-                                    className="w-full border rounded p-2"
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
                                     required
                                 >
                                     <option value="">-- Select Supplier --</option>
@@ -134,159 +162,220 @@ export default function GRNPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1">Notes</label>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Notes</label>
                                 <input
                                     type="text"
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    className="w-full border rounded p-2"
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
                                     placeholder="Optional notes"
                                 />
                             </div>
                         </div>
 
-                        <hr className="my-4" />
+                        <hr className="my-6 border-gray-200" />
 
-                        <h4 className="font-semibold mb-2">Add Items</h4>
-                        <div className="grid grid-cols-4 gap-2 mb-2">
-                            <select
-                                value={selectedProductId}
-                                onChange={(e) => setSelectedProductId(e.target.value)}
-                                className="border rounded p-2 col-span-2"
-                            >
-                                <option value="">-- Select Product --</option>
-                                {products.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.name}
-                                    </option>
-                                ))}
-                            </select>
+                        <h4 className="font-semibold mb-4 text-lg flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Items
+                        </h4>
 
-                            <input
-                                type="text"
-                                placeholder="Batch Number *"
-                                value={batchNumber}
-                                onChange={(e) => setBatchNumber(e.target.value)}
-                                className="border rounded p-2"
-                            />
-
-                            <input
-                                type="number"
-                                placeholder="Quantity *"
-                                value={quantity}
-                                onChange={(e) => setQuantity(e.target.value)}
-                                className="border rounded p-2"
-                                min="1"
-                            />
+                        {/* Barcode Scanner */}
+                        <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                            <label className="block text-sm font-medium mb-2 text-blue-900">
+                                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                </svg>
+                                Scan or Enter Barcode
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={barcodeInput}
+                                    onChange={(e) => setBarcodeInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") handleBarcodeSearch();
+                                    }}
+                                    className="flex-1 border-2 border-blue-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    placeholder="Scan or type barcode..."
+                                    autoFocus
+                                />
+                                <button
+                                    onClick={handleBarcodeSearch}
+                                    className="bg-blue-600 text-white px-6 rounded-lg hover:bg-blue-700 transition font-semibold"
+                                >
+                                    Search
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-2 mb-2">
-                            <input
-                                type="number"
-                                placeholder="Cost Price *"
-                                value={costPrice}
-                                onChange={(e) => setCostPrice(e.target.value)}
-                                className="border rounded p-2"
-                                step="0.01"
-                                min="0"
-                            />
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Product *</label>
+                                <select
+                                    value={selectedProductId}
+                                    onChange={(e) => setSelectedProductId(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="">-- Select Product --</option>
+                                    {products.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} ({p.barcode})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                            <input
-                                type="number"
-                                placeholder="Selling Price *"
-                                value={sellingPrice}
-                                onChange={(e) => setSellingPrice(e.target.value)}
-                                className="border rounded p-2"
-                                step="0.01"
-                                min="0"
-                            />
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Batch Number *</label>
+                                <input
+                                    type="text"
+                                    placeholder="Batch Number"
+                                    value={batchNumber}
+                                    onChange={(e) => setBatchNumber(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
 
-                            <input
-                                type="number"
-                                placeholder="Wholesale Price"
-                                value={wholesalePrice}
-                                onChange={(e) => setWholesalePrice(e.target.value)}
-                                className="border rounded p-2"
-                                step="0.01"
-                                min="0"
-                            />
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Quantity *</label>
+                                <input
+                                    type="number"
+                                    placeholder="Quantity"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    min="1"
+                                />
+                            </div>
 
-                            <button
-                                onClick={addItem}
-                                className="bg-green-600 text-white rounded hover:bg-green-700"
-                            >
-                                Add Item
-                            </button>
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Cost Price *</label>
+                                <input
+                                    type="number"
+                                    placeholder="Cost Price"
+                                    value={costPrice}
+                                    onChange={(e) => setCostPrice(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Selling Price *</label>
+                                <input
+                                    type="number"
+                                    placeholder="Selling Price"
+                                    value={sellingPrice}
+                                    onChange={(e) => setSellingPrice(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Wholesale Price</label>
+                                <input
+                                    type="number"
+                                    placeholder="Wholesale Price"
+                                    value={wholesalePrice}
+                                    onChange={(e) => setWholesalePrice(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Manufacture Date</label>
+                                <input
+                                    type="date"
+                                    value={manufactureDate}
+                                    onChange={(e) => setManufactureDate(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">Expiry Date</label>
+                                <input
+                                    type="date"
+                                    value={expiryDate}
+                                    onChange={(e) => setExpiryDate(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                            <input
-                                type="date"
-                                placeholder="Manufacture Date"
-                                value={manufactureDate}
-                                onChange={(e) => setManufactureDate(e.target.value)}
-                                className="border rounded p-2"
-                            />
-
-                            <input
-                                type="date"
-                                placeholder="Expiry Date"
-                                value={expiryDate}
-                                onChange={(e) => setExpiryDate(e.target.value)}
-                                className="border rounded p-2"
-                            />
-                        </div>
+                        <button
+                            onClick={addItem}
+                            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Item to GRN
+                        </button>
 
                         {/* Items Table */}
                         {items.length > 0 && (
-                            <div className="mt-4">
-                                <h4 className="font-semibold mb-2">Items Added ({items.length})</h4>
-                                <table className="w-full border-collapse text-sm">
-                                    <thead>
-                                        <tr className="bg-gray-200">
-                                            <th className="border p-2 text-left">Product</th>
-                                            <th className="border p-2 text-left">Batch</th>
-                                            <th className="border p-2 text-center">Qty</th>
-                                            <th className="border p-2 text-right">Cost</th>
-                                            <th className="border p-2 text-right">Selling</th>
-                                            <th className="border p-2 text-right">Total</th>
-                                            <th className="border p-2 text-center">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((item, index) => (
-                                            <tr key={index} className="hover:bg-gray-50">
-                                                <td className="border p-2">{item.productName}</td>
-                                                <td className="border p-2">{item.batchNumber}</td>
-                                                <td className="border p-2 text-center">{item.quantity}</td>
-                                                <td className="border p-2 text-right">Rs {item.costPrice.toFixed(2)}</td>
-                                                <td className="border p-2 text-right">Rs {item.sellingPrice.toFixed(2)}</td>
-                                                <td className="border p-2 text-right font-semibold">
-                                                    Rs {(item.costPrice * item.quantity).toFixed(2)}
-                                                </td>
-                                                <td className="border p-2 text-center">
-                                                    <button
-                                                        onClick={() => removeItem(index)}
-                                                        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </td>
+                            <div className="mt-6">
+                                <h4 className="font-semibold mb-3 text-lg">Items Added ({items.length})</h4>
+                                <div className="overflow-x-auto border-2 border-gray-200 rounded-lg">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="p-3 text-left text-sm font-semibold">Product</th>
+                                                <th className="p-3 text-left text-sm font-semibold">Batch</th>
+                                                <th className="p-3 text-center text-sm font-semibold">Qty</th>
+                                                <th className="p-3 text-right text-sm font-semibold">Cost</th>
+                                                <th className="p-3 text-right text-sm font-semibold">Selling</th>
+                                                <th className="p-3 text-right text-sm font-semibold">Total</th>
+                                                <th className="p-3 text-center text-sm font-semibold">Action</th>
                                             </tr>
-                                        ))}
-                                        <tr className="bg-blue-50 font-bold">
-                                            <td colSpan="5" className="border p-2 text-right">Total Amount:</td>
-                                            <td className="border p-2 text-right">Rs {totalAmount.toFixed(2)}</td>
-                                            <td className="border p-2"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {items.map((item, index) => (
+                                                <tr key={index} className="border-t hover:bg-gray-50">
+                                                    <td className="p-3 text-sm">{item.productName}</td>
+                                                    <td className="p-3 text-sm">{item.batchNumber}</td>
+                                                    <td className="p-3 text-center font-semibold">{item.quantity}</td>
+                                                    <td className="p-3 text-right">Rs {item.costPrice.toFixed(2)}</td>
+                                                    <td className="p-3 text-right">Rs {item.sellingPrice.toFixed(2)}</td>
+                                                    <td className="p-3 text-right font-semibold text-green-600">
+                                                        Rs {(item.costPrice * item.quantity).toFixed(2)}
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        <button
+                                                            onClick={() => removeItem(index)}
+                                                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-sm"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-blue-50 font-bold border-t-2">
+                                                <td colSpan="5" className="p-3 text-right text-lg">Total Amount:</td>
+                                                <td className="p-3 text-right text-lg text-blue-600">Rs {totalAmount.toFixed(2)}</td>
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                                 <div className="mt-4 flex justify-end">
                                     <button
                                         onClick={submitGRN}
                                         disabled={items.length === 0}
-                                        className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                                        className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition font-semibold flex items-center gap-2"
                                     >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
                                         Submit GRN
                                     </button>
                                 </div>
@@ -297,28 +386,44 @@ export default function GRNPage() {
 
                 {/* Recent GRNs */}
                 <div className="col-span-1">
-                    <div className="bg-white rounded shadow p-6">
-                        <h3 className="text-xl font-semibold mb-4">Recent GRNs</h3>
-                        <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                            {grns.map((grn) => (
-                                <div key={grn.id} className="border rounded p-3 hover:bg-gray-50">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="font-semibold text-blue-600">{grn.grnNumber}</span>
-                                        <span className="text-xs text-gray-500">
-                                            {new Date(grn.receivedDate).toLocaleDateString()}
-                                        </span>
+                    <div className="bg-white rounded-lg shadow-md p-6 sticky top-8">
+                        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Recent GRNs
+                        </h3>
+                        <div className="space-y-3 max-h-[700px] overflow-y-auto">
+                            {grns.length === 0 ? (
+                                <p className="text-gray-400 text-center py-8">No GRNs yet</p>
+                            ) : (
+                                grns.map((grn) => (
+                                    <div key={grn.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-300 transition">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="font-bold text-blue-600 text-lg">{grn.grnNumber}</span>
+                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                {new Date(grn.receivedDate).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-1 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Supplier:</span>
+                                                <span className="font-semibold">{grn.supplierName}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Items:</span>
+                                                <span className="font-semibold">{grn.items?.length || 0}</span>
+                                            </div>
+                                            <div className="flex justify-between pt-2 border-t">
+                                                <span className="text-gray-600 font-medium">Total:</span>
+                                                <span className="font-bold text-green-600 text-lg">
+                                                    Rs {grn.totalAmount.toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        Supplier: {grn.supplierName}
-                                    </div>
-                                    <div className="text-sm text-gray-600 mb-1">
-                                        Items: {grn.items?.length || 0}
-                                    </div>
-                                    <div className="font-semibold text-green-600">
-                                        Total: Rs {grn.totalAmount.toFixed(2)}
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
