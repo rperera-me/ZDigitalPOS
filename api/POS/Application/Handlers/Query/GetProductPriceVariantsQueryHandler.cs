@@ -33,8 +33,9 @@ namespace POS.Application.Handlers.Query
                     TotalStock = g.Sum(b => b.RemainingQuantity),
                     Sources = g.Select(b => new PriceVariantSourceDto
                     {
-                        GRNId = b.GRNId ?? 0,
+                        GRNId = b.GRNId, // Can be null for initial stock
                         GRNNumber = "", // Will be populated below
+                        BatchId = b.Id, // ✅ ADDED - Include batch ID
                         BatchNumber = b.BatchNumber,
                         Stock = b.RemainingQuantity,
                         ReceivedDate = b.ReceivedDate
@@ -43,15 +44,19 @@ namespace POS.Application.Handlers.Query
                 .OrderBy(pv => pv.ProductPrice)
                 .ToList();
 
-            // Populate GRN numbers
+            // Populate GRN numbers (only for batches that have GRN)
             foreach (var variant in priceGroups)
             {
                 foreach (var source in variant.Sources)
                 {
-                    if (source.GRNId > 0)
+                    if (source.GRNId.HasValue && source.GRNId.Value > 0)
                     {
-                        var grn = await _grnRepository.GetByIdAsync(source.GRNId);
+                        var grn = await _grnRepository.GetByIdAsync(source.GRNId.Value);
                         source.GRNNumber = grn?.GRNNumber ?? "";
+                    }
+                    else
+                    {
+                        source.GRNNumber = "Initial Stock"; // ✅ Label for initial inventory
                     }
                 }
             }

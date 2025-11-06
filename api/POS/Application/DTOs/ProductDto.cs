@@ -29,8 +29,9 @@ namespace PosSystem.Application.DTOs
 
     public class PriceVariantSourceDto
     {
-        public int GRNId { get; set; }
+        public int? GRNId { get; set; } // Made nullable for initial stock
         public string GRNNumber { get; set; } = string.Empty;
+        public int BatchId { get; set; } // ✅ ADDED - For sale item tracking
         public string BatchNumber { get; set; } = string.Empty;
         public int Stock { get; set; }
         public DateTime ReceivedDate { get; set; }

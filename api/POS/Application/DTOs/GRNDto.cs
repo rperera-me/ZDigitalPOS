@@ -22,6 +22,7 @@
         public string BatchNumber { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public decimal CostPrice { get; set; }
+        public decimal? ProductPrice { get; set; } // ✅ ADDED - MRP printed on product
         public decimal SellingPrice { get; set; }
         public decimal WholesalePrice { get; set; }
         public DateTime? ManufactureDate { get; set; }

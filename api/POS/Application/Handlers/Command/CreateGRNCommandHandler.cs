@@ -59,7 +59,8 @@ namespace POS.Application.Handlers.Command
                     BatchNumber = item.BatchNumber,
                     SupplierId = request.SupplierId,
                     CostPrice = item.CostPrice,
-                    ProductPrice = item.CostPrice * 1.2m, // Example markup
+                    // ✅ FIXED: Use ProductPrice from request instead of calculating
+                    ProductPrice = item.ProductPrice ?? item.SellingPrice, // Fallback to SellingPrice if not provided
                     SellingPrice = item.SellingPrice,
                     WholesalePrice = item.WholesalePrice,
                     Quantity = item.Quantity,
