@@ -22,10 +22,9 @@ export default function AdminProductsPage() {
   const [costPrice, setCostPrice] = useState("");
   const [manufactureDate, setManufactureDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
-
-  const [viewBatchesProductId, setViewBatchesProductId] = useState(null);
-  const [batches, setBatches] = useState([]);
   const [barcodeScanned, setBarcodeScanned] = useState("");
+  const [viewingStockByPrice, setViewingStockByPrice] = useState(null);
+  const [priceBreakdown, setPriceBreakdown] = useState([]);
 
   useEffect(() => {
     api.get("/category").then((res) => dispatch(setCategories(res.data)));
@@ -93,13 +92,13 @@ export default function AdminProductsPage() {
       .catch(() => alert("Failed to add product."));
   };
 
-  const viewBatches = (productId) => {
-    api.get(`/product/${productId}/batches`)
+  const viewStockByPrice = (product) => {
+    api.get(`/product/${product.id}/price-variants`)
       .then((res) => {
-        setBatches(res.data);
-        setViewBatchesProductId(productId);
+        setPriceBreakdown(res.data);
+        setViewingStockByPrice(product);
       })
-      .catch(() => alert("Failed to load batches"));
+      .catch(() => alert("Failed to load price breakdown"));
   };
 
   return (
@@ -346,7 +345,7 @@ export default function AdminProductsPage() {
                 <th className="p-3 text-right text-sm font-semibold">Retail Price</th>
                 <th className="p-3 text-right text-sm font-semibold">Wholesale Price</th>
                 <th className="p-3 text-center text-sm font-semibold">Stock Qty</th>
-                <th className="p-3 text-center text-sm font-semibold">Multi-Batch</th>
+                <th className="p-3 text-center text-sm font-semibold">Multi-Price</th>
                 <th className="p-3 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
@@ -372,16 +371,12 @@ export default function AdminProductsPage() {
                       <span className="text-gray-400">No</span>
                     )}
                   </td>
-                  <td className="p-3 text-center">
-                    {p.hasMultipleBatches && (
-                      <button
-                        onClick={() => viewBatches(p.id)}
-                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm font-semibold"
-                      >
-                        View Batches
-                      </button>
-                    )}
-                  </td>
+                  <button
+                    onClick={() => viewStockByPrice(p)}
+                    className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm font-semibold"
+                  >
+                    View Stock by Price
+                  </button>
                 </tr>
               ))}
             </tbody>
@@ -389,16 +384,19 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Batch View Modal */}
-      {viewBatchesProductId && (
+      // Stock by Price Modal
+      {viewingStockByPrice && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Product Batches</h3>
+              <div>
+                <h3 className="text-xl font-bold">{viewingStockByPrice.name}</h3>
+                <p className="text-sm text-gray-600">Stock breakdown by product price</p>
+              </div>
               <button
                 onClick={() => {
-                  setViewBatchesProductId(null);
-                  setBatches([]);
+                  setViewingStockByPrice(null);
+                  setPriceBreakdown([]);
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -408,37 +406,97 @@ export default function AdminProductsPage() {
               </button>
             </div>
 
-            {batches.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No batches found for this product</p>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                <div className="text-sm text-blue-600 mb-1">Total Stock</div>
+                <div className="text-2xl font-bold text-blue-800">
+                  {priceBreakdown.reduce((sum, v) => sum + v.totalStock, 0)} units
+                </div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                <div className="text-sm text-green-600 mb-1">Price Variants</div>
+                <div className="text-2xl font-bold text-green-800">
+                  {priceBreakdown.length}
+                </div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+                <div className="text-sm text-purple-600 mb-1">Price Range</div>
+                <div className="text-2xl font-bold text-purple-800">
+                  {priceBreakdown.length > 0 && (
+                    <>
+                      Rs {Math.min(...priceBreakdown.map(v => v.productPrice)).toFixed(2)} -
+                      Rs {Math.max(...priceBreakdown.map(v => v.productPrice)).toFixed(2)}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Price Breakdown Table */}
+            {priceBreakdown.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <p>No price variants found</p>
+              </div>
             ) : (
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="border p-2 text-left">Batch #</th>
-                    <th className="border p-2 text-left">Supplier</th>
-                    <th className="border p-2 text-right">Cost</th>
-                    <th className="border p-2 text-right">Selling</th>
-                    <th className="border p-2 text-right">Wholesale</th>
-                    <th className="border p-2 text-center">Remaining</th>
-                    <th className="border p-2 text-left">Expiry</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {batches.map((batch) => (
-                    <tr key={batch.id} className="hover:bg-gray-50">
-                      <td className="border p-2">{batch.batchNumber}</td>
-                      <td className="border p-2">{batch.supplierName}</td>
-                      <td className="border p-2 text-right">Rs {batch.costPrice.toFixed(2)}</td>
-                      <td className="border p-2 text-right">Rs {batch.sellingPrice.toFixed(2)}</td>
-                      <td className="border p-2 text-right">Rs {batch.wholesalePrice.toFixed(2)}</td>
-                      <td className="border p-2 text-center font-semibold">{batch.remainingQuantity}</td>
-                      <td className="border p-2">
-                        {batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString() : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="space-y-4">
+                {priceBreakdown.map((variant, index) => (
+                  <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                    {/* Price Header */}
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
+                      <div className="grid grid-cols-4 gap-4">
+                        <div>
+                          <div className="text-xs opacity-80">Product Price</div>
+                          <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs opacity-80">Selling Price (Retail)</div>
+                          <div className="text-xl font-semibold">Rs {variant.sellingPrice.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs opacity-80">Wholesale Price</div>
+                          <div className="text-xl font-semibold">Rs {variant.wholesalePrice.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs opacity-80">Total Stock</div>
+                          <div className="text-2xl font-bold">{variant.totalStock} units</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* GRN Sources */}
+                    <div className="p-4 bg-gray-50">
+                      <h4 className="font-semibold mb-3 text-sm text-gray-700">Stock Sources (GRNs):</h4>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-white">
+                            <th className="text-left p-2">GRN Number</th>
+                            <th className="text-left p-2">Batch Number</th>
+                            <th className="text-center p-2">Stock</th>
+                            <th className="text-left p-2">Received Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {variant.sources.map((source, idx) => (
+                            <tr key={idx} className="border-b hover:bg-white">
+                              <td className="p-2 font-mono text-blue-600">{source.grnNumber}</td>
+                              <td className="p-2">{source.batchNumber}</td>
+                              <td className="text-center p-2">
+                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
+                                  {source.stock}
+                                </span>
+                              </td>
+                              <td className="p-2 text-gray-600">
+                                {new Date(source.receivedDate).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

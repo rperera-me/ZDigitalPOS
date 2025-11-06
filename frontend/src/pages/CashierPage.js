@@ -19,7 +19,7 @@ import ReceiptModal from "../components/receipt/ReceiptPreviewModal";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import storeSetting from "../config/storeSettings";
-import BatchSelectionModal from "../components/BatchSelectionModal";
+import PriceSelectionModal from "../components/PriceSelectionModal";
 
 export default function CashierPage() {
   const dispatch = useDispatch();
@@ -52,9 +52,9 @@ export default function CashierPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [barcodeQuantity, setBarcodeQuantity] = useState(1);
 
-  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showPriceModal, setShowPriceModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [productBatches, setProductBatches] = useState([]);
+  const [priceVariants, setPriceVariants] = useState([]);
 
   // Filtered products with search
   const filteredProducts = useMemo(() => {
@@ -149,44 +149,56 @@ export default function CashierPage() {
     api.get("/sale/held").then((res) => dispatch(setHoldSales(res.data)));
   }
 
+  function addToCart(product, price, quantity) {
+    dispatch(
+      addSaleItem({
+        productId: product.id,
+        name: product.name,
+        price: price,
+        quantity: quantity,
+      })
+    );
+  }
+
+  function handlePriceSelect(variant, price, quantity) {
+    addToCart(selectedProduct, price, quantity);
+    setShowPriceModal(false);
+    setSelectedProduct(null);
+    setPriceVariants([]);
+  }
+
   // Sale item handlers
   function onAddProduct(product) {
-    // Check if product has multiple batches
+    // Check if product has multiple prices
     if (product.hasMultipleBatches) {
-      // Fetch batches and show modal
-      api.get(`/product/${product.id}/batches`)
+      // Fetch price variants
+      api.get(`/product/${product.id}/price-variants`)
         .then((res) => {
-          if (res.data && res.data.length > 0) {
-            setProductBatches(res.data);
+          if (res.data && res.data.length > 1) {
+            // Multiple prices exist - show selection modal
+            setPriceVariants(res.data);
             setSelectedProduct(product);
-            setShowBatchModal(true);
+            setShowPriceModal(true);
+          } else if (res.data && res.data.length === 1) {
+            // Only one price - add directly
+            const variant = res.data[0];
+            const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
+            addToCart(product, price, 1);
           } else {
-            // No active batches, use default price
-            dispatch(
-              addSaleItem({
-                productId: product.id,
-                batchId: null,
-                name: product.name,
-                price: product.priceRetail,
-                quantity: 1,
-              })
-            );
+            // No price variants - use default
+            const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
+            addToCart(product, price, 1);
           }
         })
         .catch(() => {
-          alert("Failed to load batches");
+          // Error fetching variants - use default price
+          const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
+          addToCart(product, price, 1);
         });
     } else {
-      // Single batch or no batch system
-      dispatch(
-        addSaleItem({
-          productId: product.id,
-          batchId: null,
-          name: product.name,
-          price: product.priceRetail,
-          quantity: 1,
-        })
-      );
+      // No multiple batches - use default price
+      const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
+      addToCart(product, price, 1);
     }
   }
 
@@ -199,21 +211,6 @@ export default function CashierPage() {
     dispatch(updateQuantity({ productId, batchId, price, quantity }));
   }
 
-  function handleBatchSelect(batch, quantity) {
-    dispatch(
-      addSaleItem({
-        productId: selectedProduct.id,
-        batchId: batch.id,
-        name: selectedProduct.name,
-        batchNumber: batch.batchNumber,
-        price: batch.sellingPrice,
-        quantity: quantity,
-      })
-    );
-    setShowBatchModal(false);
-    setSelectedProduct(null);
-    setProductBatches([]);
-  }
   // Update the handleBarcodeAdd function to use quantity
   function handleBarcodeAdd(barcode) {
     const code = barcode || barcodeInput.trim();
@@ -221,22 +218,13 @@ export default function CashierPage() {
 
     const quantity = parseInt(barcodeQuantity) || 1;
 
-    api
-      .get(`/product/barcode/${code}`)
+    api.get(`/product/barcode/${code}`)
       .then((res) => {
         if (res.data) {
-          // Add product with specified quantity
-          dispatch(
-            addSaleItem({
-              productId: res.data.id,
-              name: res.data.name,
-              price: res.data.priceRetail,
-              quantity: quantity,
-            })
-          );
+          onAddProduct(res.data); // Use the same logic
           if (!barcode) {
             setBarcodeInput("");
-            setBarcodeQuantity(1); // Reset quantity to 1 after adding
+            setBarcodeQuantity(1);
           }
         } else {
           alert("Product not found.");
@@ -1075,17 +1063,17 @@ export default function CashierPage() {
         )
       }
 
-      {/* Batch Selection Modal */}
-      <BatchSelectionModal
-        isOpen={showBatchModal}
+      <PriceSelectionModal
+        isOpen={showPriceModal}
         onClose={() => {
-          setShowBatchModal(false);
+          setShowPriceModal(false);
           setSelectedProduct(null);
-          setProductBatches([]);
+          setPriceVariants([]);
         }}
         product={selectedProduct}
-        batches={productBatches}
-        onSelectBatch={handleBatchSelect}
+        priceVariants={priceVariants}
+        onSelectPrice={handlePriceSelect}
+        customerType={customerType} // Pass customer type for price calculation
       />
     </div >
   );
