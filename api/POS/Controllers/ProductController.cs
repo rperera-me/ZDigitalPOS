@@ -75,5 +75,12 @@ namespace PosSystem.Controllers
             var batches = await _mediator.Send(new GetProductBatchesQuery { ProductId = id });
             return Ok(batches);
         }
+
+        [HttpGet("{id}/price-variants")]
+        public async Task<ActionResult<List<ProductPriceVariantDto>>> GetPriceVariants(int id)
+        {
+            var variants = await _mediator.Send(new GetProductPriceVariantsQuery { ProductId = id });
+            return Ok(variants);
+        }
     }
 }
