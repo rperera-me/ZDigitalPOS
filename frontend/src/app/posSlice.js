@@ -3,7 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   categories: [],
   products: [],
-  suppliers: [], // New
+  suppliers: [],
   saleItems: [],
   holdSales: [],
   customers: [],
@@ -11,9 +11,9 @@ const initialState = {
   paymentMethod: "Cash",
   cashGiven: "",
   selectedCategoryId: null,
-  selectedBatch: null, // New
-  showBatchModal: false, // New
-  currentProduct: null, // New
+  selectedBatch: null,
+  showBatchModal: false,
+  currentProduct: null,
 };
 
 const posSlice = createSlice({
@@ -26,30 +26,53 @@ const posSlice = createSlice({
     setProducts: (state, action) => {
       state.products = action.payload;
     },
-    setSuppliers: (state, action) => { // New
+    setSuppliers: (state, action) => {
       state.suppliers = action.payload;
     },
     addSaleItem: (state, action) => {
       const item = action.payload;
-      const existing = state.saleItems.find(i => 
-        i.productId === item.productId && i.batchId === item.batchId
-      );
+      
+      // Create unique key: if no batch, use productId + price for matching
+      const itemKey = item.batchId 
+        ? `${item.productId}-${item.batchId}` 
+        : `${item.productId}-${item.price}`;
+      
+      // Find existing item with same key
+      const existing = state.saleItems.find(i => {
+        const existingKey = i.batchId 
+          ? `${i.productId}-${i.batchId}` 
+          : `${i.productId}-${i.price}`;
+        return existingKey === itemKey;
+      });
+      
       if (existing) {
+        // Update quantity of existing item
         existing.quantity += item.quantity;
       } else {
+        // Add as new item
         state.saleItems.push(item);
       }
     },
     removeSaleItem: (state, action) => {
-      state.saleItems = state.saleItems.filter(i => 
-        !(i.productId === action.payload.productId && i.batchId === action.payload.batchId)
-      );
+      const { productId, batchId, price } = action.payload;
+      state.saleItems = state.saleItems.filter(i => {
+        // Match by batch if provided, otherwise by price
+        if (batchId !== undefined && batchId !== null) {
+          return !(i.productId === productId && i.batchId === batchId);
+        } else {
+          return !(i.productId === productId && i.price === price);
+        }
+      });
     },
     updateQuantity: (state, action) => {
-      const { productId, batchId, quantity } = action.payload;
-      const item = state.saleItems.find(i => 
-        i.productId === productId && i.batchId === batchId
-      );
+      const { productId, batchId, price, quantity } = action.payload;
+      const item = state.saleItems.find(i => {
+        if (batchId !== undefined && batchId !== null) {
+          return i.productId === productId && i.batchId === batchId;
+        } else {
+          return i.productId === productId && i.price === price;
+        }
+      });
       if (item) {
         item.quantity = quantity;
       }
@@ -81,13 +104,13 @@ const posSlice = createSlice({
     setCategoryId: (state, action) => {
       state.selectedCategoryId = action.payload;
     },
-    setShowBatchModal: (state, action) => { // New
+    setShowBatchModal: (state, action) => {
       state.showBatchModal = action.payload;
     },
-    setCurrentProduct: (state, action) => { // New
+    setCurrentProduct: (state, action) => {
       state.currentProduct = action.payload;
     },
-    setSelectedBatch: (state, action) => { // New
+    setSelectedBatch: (state, action) => {
       state.selectedBatch = action.payload;
     },
   },

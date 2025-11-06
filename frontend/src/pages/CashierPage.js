@@ -190,13 +190,13 @@ export default function CashierPage() {
     }
   }
 
-  function onRemoveSaleItem(productId, batchId) {
-    dispatch(removeSaleItem({ productId, batchId }));
+  function onRemoveSaleItem(productId, batchId, price) {
+    dispatch(removeSaleItem({ productId, batchId, price }));
   }
 
-  function onUpdateQuantity(productId, batchId, quantity) {
+  function onUpdateQuantity(productId, batchId, price, quantity) {
     if (quantity < 1) return;
-    dispatch(updateQuantity({ productId, batchId, quantity }));
+    dispatch(updateQuantity({ productId, batchId, price, quantity }));
   }
 
   function handleBatchSelect(batch, quantity) {
@@ -683,25 +683,28 @@ export default function CashierPage() {
                 </tr>
               </thead>
               <tbody>
-                {saleItems.map((item) => (
-                  <tr key={`${item.productId}-${item.batchId || 'default'}`} className="border-b hover:bg-gray-100">
+                {saleItems.map((item, index) => (
+                  <tr key={`${item.productId}-${item.batchId || item.price}-${index}`} className="border-b hover:bg-gray-100">
                     <td className="p-1 text-xs">
                       {item.name}
                       {item.batchNumber && (
                         <div className="text-xs text-gray-500">Batch: {item.batchNumber}</div>
                       )}
+                      <div className="text-xs font-semibold text-green-600">
+                        @ Rs {item.price.toFixed(2)}
+                      </div>
                     </td>
                     <td className="text-center p-1">
                       <div className="flex items-center justify-center gap-0.5">
                         <button
-                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.quantity - 1)}
+                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.price, item.quantity - 1)}
                           className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
                         >
                           −
                         </button>
                         <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
                         <button
-                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.quantity + 1)}
+                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.price, item.quantity + 1)}
                           className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
                         >
                           +
@@ -712,7 +715,7 @@ export default function CashierPage() {
                     <td className="text-right p-1 font-semibold text-xs">Rs {(item.price * item.quantity).toFixed(2)}</td>
                     <td className="p-1 text-center">
                       <button
-                        onClick={() => onRemoveSaleItem(item.productId, item.batchId)}
+                        onClick={() => onRemoveSaleItem(item.productId, item.batchId, item.price)}
                         className="text-red-600 hover:text-red-800"
                         title="Delete"
                       >
@@ -765,44 +768,6 @@ export default function CashierPage() {
           </button>
         </div>
       </div>
-
-      {/* Total & Actions
-      <div className="bg-white border-t p-3">
-        <div className="flex justify-between items-center mb-3">
-          <span className="font-semibold">TOTAL</span>
-          <span className="text-2xl font-bold text-blue-600">Rs {getTotalAmount().toFixed(2)}</span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          <button
-            onClick={newSale}
-            className="bg-gray-400 text-white py-2 rounded text-sm hover:bg-gray-500"
-          >
-            New
-          </button>
-          <button
-            onClick={holdSale}
-            className="bg-yellow-500 text-white py-2 rounded text-sm hover:bg-yellow-600"
-          >
-            Hold
-          </button>
-          <button
-            onClick={() => dispatch(clearSale())}
-            className="bg-red-500 text-white py-2 rounded text-sm hover:bg-red-600"
-          >
-            Clear
-          </button>
-        </div>
-
-        <button
-          onClick={openPayment}
-          disabled={saleItems.length === 0}
-          className="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Proceed to Payment
-        </button>
-      </div>
-    </div> */}
 
       {/* PAYMENT MODAL */}
       {
