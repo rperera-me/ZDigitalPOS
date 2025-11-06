@@ -342,49 +342,72 @@ export default function AdminProductsPage() {
                 <th className="p-3 text-left text-sm font-semibold">Barcode</th>
                 <th className="p-3 text-left text-sm font-semibold">Category</th>
                 <th className="p-3 text-left text-sm font-semibold">Supplier</th>
-                <th className="p-3 text-right text-sm font-semibold">Retail Price</th>
-                <th className="p-3 text-right text-sm font-semibold">Wholesale Price</th>
+                <th className="p-3 text-right text-sm font-semibold">
+                  <div>Price Range</div>
+                  <div className="text-xs font-normal text-gray-500">(MRP / Selling / Wholesale)</div>
+                </th>
                 <th className="p-3 text-center text-sm font-semibold">Stock Qty</th>
-                <th className="p-3 text-center text-sm font-semibold">Multi-Price</th>
                 <th className="p-3 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
-                <tr key={p.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 text-sm">{p.id}</td>
-                  <td className="p-3 text-sm font-medium">{p.name}</td>
-                  <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
-                  <td className="p-3 text-sm">{p.categoryName || ""}</td>
-                  <td className="p-3 text-sm">{p.defaultSupplierName || "-"}</td>
-                  <td className="p-3 text-right font-semibold">Rs {p.priceRetail.toFixed(2)}</td>
-                  <td className="p-3 text-right">Rs {p.priceWholesale.toFixed(2)}</td>
-                  <td className="p-3 text-center">
-                    <span className={`px-2 py-1 rounded text-sm font-semibold ${p.stockQuantity <= 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                      {p.stockQuantity}
-                    </span>
-                  </td>
-                  <td className="p-3 text-center">
-                    {p.hasMultipleBatches ? (
-                      <span className="text-green-600 font-semibold">✓ Yes</span>
-                    ) : (
-                      <span className="text-gray-400">No</span>
-                    )}
-                  </td>
-                  <button
-                    onClick={() => viewStockByPrice(p)}
-                    className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm font-semibold"
-                  >
-                    View Stock by Price
-                  </button>
-                </tr>
-              ))}
+              {products.map((p) => {
+                // Calculate price display
+                const showPriceRange = p.hasMultipleBatches;
+
+                return (
+                  <tr key={p.id} className="border-t hover:bg-gray-50">
+                    <td className="p-3 text-sm">{p.id}</td>
+                    <td className="p-3 text-sm font-medium">{p.name}</td>
+                    <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
+                    <td className="p-3 text-sm">{p.categoryName || ""}</td>
+                    <td className="p-3 text-sm">{p.defaultSupplierName || "-"}</td>
+                    <td className="p-3 text-right">
+                      {showPriceRange ? (
+                        <div className="text-sm">
+                          <div className="text-blue-600 font-semibold">Multiple Prices</div>
+                          <button
+                            onClick={() => viewStockByPrice(p)}
+                            className="text-xs text-purple-600 hover:text-purple-800 underline"
+                          >
+                            View Details →
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-sm space-y-0.5">
+                          <div className="text-gray-600">
+                            <span className="text-xs">MRP:</span> Rs {p.priceRetail.toFixed(2)}
+                          </div>
+                          <div className="text-green-600 font-semibold">
+                            <span className="text-xs">Sell:</span> Rs {p.priceRetail.toFixed(2)}
+                          </div>
+                          <div className="text-orange-600">
+                            <span className="text-xs">W/S:</span> Rs {p.priceWholesale.toFixed(2)}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className={`px-2 py-1 rounded text-sm font-semibold ${p.stockQuantity <= 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                        {p.stockQuantity}
+                      </span>
+                    </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => viewStockByPrice(p)}
+                        className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm font-semibold"
+                      >
+                        {showPriceRange ? 'View Prices' : 'View Details'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      // Stock by Price Modal
       {viewingStockByPrice && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
@@ -421,13 +444,10 @@ export default function AdminProductsPage() {
                 </div>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                <div className="text-sm text-purple-600 mb-1">Price Range</div>
+                <div className="text-sm text-purple-600 mb-1">Lowest Selling Price</div>
                 <div className="text-2xl font-bold text-purple-800">
                   {priceBreakdown.length > 0 && (
-                    <>
-                      Rs {Math.min(...priceBreakdown.map(v => v.productPrice)).toFixed(2)} -
-                      Rs {Math.max(...priceBreakdown.map(v => v.productPrice)).toFixed(2)}
-                    </>
+                    <>Rs {Math.min(...priceBreakdown.map(v => v.sellingPrice)).toFixed(2)}</>
                   )}
                 </div>
               </div>
@@ -437,65 +457,99 @@ export default function AdminProductsPage() {
             {priceBreakdown.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <p>No price variants found</p>
+                <p className="text-sm mt-2">Product uses default pricing or has no batches yet</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {priceBreakdown.map((variant, index) => (
-                  <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden">
-                    {/* Price Header */}
-                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
-                      <div className="grid grid-cols-4 gap-4">
-                        <div>
-                          <div className="text-xs opacity-80">Product Price</div>
-                          <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs opacity-80">Selling Price (Retail)</div>
-                          <div className="text-xl font-semibold">Rs {variant.sellingPrice.toFixed(2)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs opacity-80">Wholesale Price</div>
-                          <div className="text-xl font-semibold">Rs {variant.wholesalePrice.toFixed(2)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs opacity-80">Total Stock</div>
-                          <div className="text-2xl font-bold">{variant.totalStock} units</div>
+                {priceBreakdown.map((variant, index) => {
+                  const discount = variant.productPrice > variant.sellingPrice
+                    ? ((variant.productPrice - variant.sellingPrice) / variant.productPrice * 100).toFixed(1)
+                    : 0;
+
+                  return (
+                    <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                      {/* Price Header */}
+                      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
+                        <div className="grid grid-cols-4 gap-4">
+                          <div>
+                            <div className="text-xs opacity-80">Product Price (MRP)</div>
+                            <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs opacity-80">Selling Price (Retail)</div>
+                            <div className="text-xl font-semibold flex items-center gap-2">
+                              Rs {variant.sellingPrice.toFixed(2)}
+                              {discount > 0 && (
+                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                                  {discount}% OFF
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs opacity-80">Wholesale Price</div>
+                            <div className="text-xl font-semibold">Rs {variant.wholesalePrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs opacity-80">Total Stock</div>
+                            <div className="text-2xl font-bold">{variant.totalStock} units</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* GRN Sources */}
-                    <div className="p-4 bg-gray-50">
-                      <h4 className="font-semibold mb-3 text-sm text-gray-700">Stock Sources (GRNs):</h4>
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-white">
-                            <th className="text-left p-2">GRN Number</th>
-                            <th className="text-left p-2">Batch Number</th>
-                            <th className="text-center p-2">Stock</th>
-                            <th className="text-left p-2">Received Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {variant.sources.map((source, idx) => (
-                            <tr key={idx} className="border-b hover:bg-white">
-                              <td className="p-2 font-mono text-blue-600">{source.grnNumber}</td>
-                              <td className="p-2">{source.batchNumber}</td>
-                              <td className="text-center p-2">
-                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
-                                  {source.stock}
-                                </span>
-                              </td>
-                              <td className="p-2 text-gray-600">
-                                {new Date(source.receivedDate).toLocaleDateString()}
-                              </td>
+                      {/* GRN Sources */}
+                      <div className="p-4 bg-gray-50">
+                        <h4 className="font-semibold mb-3 text-sm text-gray-700 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                          Stock Sources ({variant.sources.length} batch{variant.sources.length !== 1 ? 'es' : ''}):
+                        </h4>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-white">
+                              <th className="text-left p-2">Source</th>
+                              <th className="text-left p-2">GRN Number</th>
+                              <th className="text-left p-2">Batch Number</th>
+                              <th className="text-center p-2">Stock</th>
+                              <th className="text-left p-2">Received Date</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {variant.sources.map((source, idx) => (
+                              <tr key={idx} className="border-b hover:bg-white">
+                                <td className="p-2">
+                                  {source.grnId ? (
+                                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-semibold">
+                                      GRN
+                                    </span>
+                                  ) : (
+                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">
+                                      Initial Stock
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-2 font-mono text-blue-600">
+                                  {source.grnNumber || '-'}
+                                </td>
+                                <td className="p-2 font-mono">{source.batchNumber}</td>
+                                <td className="text-center p-2">
+                                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
+                                    {source.stock}
+                                  </span>
+                                </td>
+                                <td className="p-2 text-gray-600">
+                                  {new Date(source.receivedDate).toLocaleDateString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                }
+                )}
               </div>
             )}
           </div>

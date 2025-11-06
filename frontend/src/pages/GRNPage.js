@@ -20,6 +20,7 @@ export default function GRNPage() {
     const [batchNumber, setBatchNumber] = useState("");
     const [quantity, setQuantity] = useState("");
     const [costPrice, setCostPrice] = useState("");
+    const [productPrice, setProductPrice] = useState(""); // ✅ ADDED
     const [sellingPrice, setSellingPrice] = useState("");
     const [wholesalePrice, setWholesalePrice] = useState("");
     const [manufactureDate, setManufactureDate] = useState("");
@@ -43,9 +44,12 @@ export default function GRNPage() {
                 if (res.data) {
                     setSelectedProductId(res.data.id.toString());
                     setBarcodeInput("");
-                    // Optionally auto-fill wholesale price
+                    // Auto-fill prices if available
                     if (res.data.priceWholesale) {
                         setWholesalePrice(res.data.priceWholesale.toString());
+                    }
+                    if (res.data.priceRetail) {
+                        setSellingPrice(res.data.priceRetail.toString());
                     }
                 } else {
                     alert("Product not found with this barcode");
@@ -55,8 +59,8 @@ export default function GRNPage() {
     };
 
     const addItem = () => {
-        if (!selectedProductId || !batchNumber || !quantity || !costPrice || !sellingPrice) {
-            alert("Please fill all required fields");
+        if (!selectedProductId || !batchNumber || !quantity || !costPrice || !productPrice || !sellingPrice) {
+            alert("Please fill all required fields (Product, Batch, Qty, Cost, Product Price, Selling Price)");
             return;
         }
 
@@ -68,6 +72,7 @@ export default function GRNPage() {
             batchNumber,
             quantity: parseInt(quantity),
             costPrice: parseFloat(costPrice),
+            productPrice: parseFloat(productPrice), // ✅ ADDED
             sellingPrice: parseFloat(sellingPrice),
             wholesalePrice: parseFloat(wholesalePrice) || parseFloat(sellingPrice),
             manufactureDate: manufactureDate || null,
@@ -81,6 +86,7 @@ export default function GRNPage() {
         setBatchNumber("");
         setQuantity("");
         setCostPrice("");
+        setProductPrice(""); // ✅ ADDED
         setSellingPrice("");
         setWholesalePrice("");
         setManufactureDate("");
@@ -211,8 +217,8 @@ export default function GRNPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="col-span-2">
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                            <div className="col-span-3">
                                 <label className="block text-sm font-medium mb-1 text-gray-700">Product *</label>
                                 <select
                                     value={selectedProductId}
@@ -252,7 +258,9 @@ export default function GRNPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">Cost Price *</label>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">
+                                    Cost Price * 
+                                </label>
                                 <input
                                     type="number"
                                     placeholder="Cost Price"
@@ -264,8 +272,28 @@ export default function GRNPage() {
                                 />
                             </div>
 
+                            {/* ✅ ADDED PRODUCT PRICE */}
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">Selling Price *</label>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">
+                                    Product Price (MRP) *
+                                    <span className="text-xs text-gray-500 ml-1">(Printed on product)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    placeholder="Product Price"
+                                    value={productPrice}
+                                    onChange={(e) => setProductPrice(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">
+                                    Selling Price (Retail) *
+                                    <span className="text-xs text-gray-500 ml-1">(What customers pay)</span>
+                                </label>
                                 <input
                                     type="number"
                                     placeholder="Selling Price"
@@ -278,7 +306,10 @@ export default function GRNPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">Wholesale Price</label>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">
+                                    Wholesale Price
+                                    <span className="text-xs text-gray-500 ml-1">(Bulk buyers)</span>
+                                </label>
                                 <input
                                     type="number"
                                     placeholder="Wholesale Price"
@@ -326,33 +357,35 @@ export default function GRNPage() {
                             <div className="mt-6">
                                 <h4 className="font-semibold mb-3 text-lg">Items Added ({items.length})</h4>
                                 <div className="overflow-x-auto border-2 border-gray-200 rounded-lg">
-                                    <table className="w-full">
+                                    <table className="w-full text-sm">
                                         <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="p-3 text-left text-sm font-semibold">Product</th>
-                                                <th className="p-3 text-left text-sm font-semibold">Batch</th>
-                                                <th className="p-3 text-center text-sm font-semibold">Qty</th>
-                                                <th className="p-3 text-right text-sm font-semibold">Cost</th>
-                                                <th className="p-3 text-right text-sm font-semibold">Selling</th>
-                                                <th className="p-3 text-right text-sm font-semibold">Total</th>
-                                                <th className="p-3 text-center text-sm font-semibold">Action</th>
+                                                <th className="p-2 text-left font-semibold">Product</th>
+                                                <th className="p-2 text-left font-semibold">Batch</th>
+                                                <th className="p-2 text-center font-semibold">Qty</th>
+                                                <th className="p-2 text-right font-semibold">Cost</th>
+                                                <th className="p-2 text-right font-semibold">MRP</th>
+                                                <th className="p-2 text-right font-semibold">Selling</th>
+                                                <th className="p-2 text-right font-semibold">Total</th>
+                                                <th className="p-2 text-center font-semibold">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {items.map((item, index) => (
                                                 <tr key={index} className="border-t hover:bg-gray-50">
-                                                    <td className="p-3 text-sm">{item.productName}</td>
-                                                    <td className="p-3 text-sm">{item.batchNumber}</td>
-                                                    <td className="p-3 text-center font-semibold">{item.quantity}</td>
-                                                    <td className="p-3 text-right">Rs {item.costPrice.toFixed(2)}</td>
-                                                    <td className="p-3 text-right">Rs {item.sellingPrice.toFixed(2)}</td>
-                                                    <td className="p-3 text-right font-semibold text-green-600">
+                                                    <td className="p-2">{item.productName}</td>
+                                                    <td className="p-2">{item.batchNumber}</td>
+                                                    <td className="p-2 text-center font-semibold">{item.quantity}</td>
+                                                    <td className="p-2 text-right">Rs {item.costPrice.toFixed(2)}</td>
+                                                    <td className="p-2 text-right text-yellow-600 font-semibold">Rs {item.productPrice.toFixed(2)}</td>
+                                                    <td className="p-2 text-right">Rs {item.sellingPrice.toFixed(2)}</td>
+                                                    <td className="p-2 text-right font-semibold text-green-600">
                                                         Rs {(item.costPrice * item.quantity).toFixed(2)}
                                                     </td>
-                                                    <td className="p-3 text-center">
+                                                    <td className="p-2 text-center">
                                                         <button
                                                             onClick={() => removeItem(index)}
-                                                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-sm"
+                                                            className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition"
                                                         >
                                                             Remove
                                                         </button>
@@ -360,7 +393,7 @@ export default function GRNPage() {
                                                 </tr>
                                             ))}
                                             <tr className="bg-blue-50 font-bold border-t-2">
-                                                <td colSpan="5" className="p-3 text-right text-lg">Total Amount:</td>
+                                                <td colSpan="6" className="p-3 text-right text-lg">Total Amount:</td>
                                                 <td className="p-3 text-right text-lg text-blue-600">Rs {totalAmount.toFixed(2)}</td>
                                                 <td></td>
                                             </tr>
@@ -384,7 +417,7 @@ export default function GRNPage() {
                     </div>
                 </div>
 
-                {/* Recent GRNs */}
+                {/* Recent GRNs - Same as before */}
                 <div className="col-span-1">
                     <div className="bg-white rounded-lg shadow-md p-6 sticky top-8">
                         <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">

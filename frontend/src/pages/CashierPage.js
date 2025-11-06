@@ -149,19 +149,26 @@ export default function CashierPage() {
     api.get("/sale/held").then((res) => dispatch(setHoldSales(res.data)));
   }
 
-  function addToCart(product, price, quantity) {
+  function addToCart(product, price, quantity, batchId = null, batchNumber = null) {
     dispatch(
       addSaleItem({
         productId: product.id,
         name: product.name,
         price: price,
         quantity: quantity,
+        batchId: batchId,
+        batchNumber: batchNumber
       })
     );
   }
 
   function handlePriceSelect(variant, price, quantity) {
-    addToCart(selectedProduct, price, quantity);
+    // Get batch information from the first source
+    const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
+    const batchId = firstSource?.batchId || null;
+    const batchNumber = firstSource?.batchNumber || null;
+
+    addToCart(selectedProduct, price, quantity, batchId, batchNumber);
     setShowPriceModal(false);
     setSelectedProduct(null);
     setPriceVariants([]);
@@ -169,36 +176,53 @@ export default function CashierPage() {
 
   // Sale item handlers
   function onAddProduct(product) {
+    console.log("Adding product:", product); // Debug log
+
     // Check if product has multiple prices
     if (product.hasMultipleBatches) {
+      console.log("Product has multiple batches, fetching price variants..."); // Debug log
+
       // Fetch price variants
       api.get(`/product/${product.id}/price-variants`)
         .then((res) => {
+          console.log("Price variants response:", res.data); // Debug log
+
           if (res.data && res.data.length > 1) {
             // Multiple prices exist - show selection modal
+            console.log("Multiple prices found, showing modal"); // Debug log
             setPriceVariants(res.data);
             setSelectedProduct(product);
             setShowPriceModal(true);
           } else if (res.data && res.data.length === 1) {
             // Only one price - add directly
+            console.log("Single price found, adding directly"); // Debug log
             const variant = res.data[0];
             const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
-            addToCart(product, price, 1);
+
+            // Get the first batch ID from sources
+            const batchId = variant.sources && variant.sources.length > 0
+              ? variant.sources[0].batchId
+              : null;
+
+            addToCart(product, price, 1, batchId, variant.sources[0]?.batchNumber);
           } else {
-            // No price variants - use default
+            // No price variants - use default price
+            console.log("No price variants, using default price"); // Debug log
             const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
-            addToCart(product, price, 1);
+            addToCart(product, price, 1, null, null);
           }
         })
-        .catch(() => {
+        .catch((err) => {
           // Error fetching variants - use default price
+          console.error("Error fetching price variants:", err);
           const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
-          addToCart(product, price, 1);
+          addToCart(product, price, 1, null, null);
         });
     } else {
       // No multiple batches - use default price
+      console.log("No multiple batches, using default price"); // Debug log
       const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
-      addToCart(product, price, 1);
+      addToCart(product, price, 1, null, null);
     }
   }
 
