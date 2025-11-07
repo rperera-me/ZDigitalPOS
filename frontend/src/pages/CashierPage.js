@@ -149,106 +149,123 @@ export default function CashierPage() {
     api.get("/sale/held").then((res) => dispatch(setHoldSales(res.data)));
   }
 
-  function addToCart(product, price, quantity, batchId = null, batchNumber = null) {
+  function addToCart(product, price, quantity, sourceId = null) {
+    console.log("🛒 Adding to cart:", {
+      product: product.name || product,
+      price,
+      quantity,
+      sourceId
+    });
+
     dispatch(
       addSaleItem({
-        productId: product.id,
-        name: product.name,
+        productId: typeof product === 'object' ? product.id : product,
+        name: typeof product === 'object' ? product.name : '',
         price: price,
         quantity: quantity,
-        batchId: batchId,
-        batchNumber: batchNumber
+        sourceId: sourceId // Changed from batchId
       })
     );
   }
 
   function handlePriceSelect(variant, price, quantity) {
-    // Get batch information from the first source
-    const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
-    const batchId = firstSource?.batchId || null;
-    const batchNumber = firstSource?.batchNumber || null;
+    console.log("✅ Price selected:", { price, quantity });
 
-    addToCart(selectedProduct, price, quantity, batchId, batchNumber);
+    // Get source ID (no batch logic)
+    const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
+    const sourceId = firstSource?.sourceId || null;
+
+    addToCart(selectedProduct, price, quantity, sourceId);
+
     setShowPriceModal(false);
     setSelectedProduct(null);
     setPriceVariants([]);
   }
 
-  // Sale item handlers
   function onAddProduct(product) {
-    console.log("Adding product:", product); // Debug log
+    console.log("🔍 Adding product:", product.name, "HasMultipleProductPrices:", product.hasMultipleProductPrices);
 
-    // Check if product has multiple prices
-    if (product.hasMultipleBatches) {
-      console.log("Product has multiple batches, fetching price variants..."); // Debug log
+    // ✅ Check if product has multiple PRICES (not batches)
+    if (product.hasMultipleProductPrices) {
+      console.log("💰 Product has multiple prices, fetching variants...");
 
-      // Fetch price variants
       api.get(`/product/${product.id}/price-variants`)
         .then((res) => {
-          console.log("Price variants response:", res.data); // Debug log
+          console.log("📊 Price variants received:", res.data);
 
           if (res.data && res.data.length > 1) {
-            // Multiple prices exist - show selection modal
-            console.log("Multiple prices found, showing modal"); // Debug log
+            // Multiple prices exist - SHOW MODAL
+            console.log("✅ Showing price selection modal");
             setPriceVariants(res.data);
             setSelectedProduct(product);
             setShowPriceModal(true);
           } else if (res.data && res.data.length === 1) {
             // Only one price - add directly
-            console.log("Single price found, adding directly"); // Debug log
+            console.log("✅ Single price - adding directly");
             const variant = res.data[0];
             const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
 
-            // Get the first batch ID from sources
-            const batchId = variant.sources && variant.sources.length > 0
-              ? variant.sources[0].batchId
-              : null;
+            // Get source ID (no batch logic)
+            const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
+            const sourceId = firstSource?.sourceId || null;
 
-            addToCart(product, price, 1, batchId, variant.sources[0]?.batchNumber);
+            addToCart(product, price, 1, sourceId);
           } else {
-            // No price variants - use default price
-            console.log("No price variants, using default price"); // Debug log
+            // No variants - use default
+            console.log("⚠️ No price variants - using default");
             const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
-            addToCart(product, price, 1, null, null);
+            addToCart(product, price, 1, null);
           }
         })
         .catch((err) => {
-          // Error fetching variants - use default price
-          console.error("Error fetching price variants:", err);
+          console.error("❌ Error fetching variants:", err);
           const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
-          addToCart(product, price, 1, null, null);
+          addToCart(product, price, 1, null);
         });
     } else {
-      // No multiple batches - use default price
-      console.log("No multiple batches, using default price"); // Debug log
+      // No multiple prices - use default
+      console.log("📝 Single price product - using default");
       const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
-      addToCart(product, price, 1, null, null);
+      addToCart(product, price, 1, null);
     }
   }
 
-  function onRemoveSaleItem(productId, batchId, price) {
-    dispatch(removeSaleItem({ productId, batchId, price }));
+  function onRemoveSaleItem(productId, sourceId, price) {
+    dispatch(removeSaleItem({ productId, sourceId, price }));
   }
 
-  function onUpdateQuantity(productId, batchId, price, quantity) {
+  function onUpdateQuantity(productId, sourceId, price, quantity) {
     if (quantity < 1) return;
-    dispatch(updateQuantity({ productId, batchId, price, quantity }));
+    dispatch(updateQuantity({ productId, sourceId, price, quantity }));
   }
 
-  // Update the handleBarcodeAdd function to use quantity
   function handleBarcodeAdd(barcode) {
     const code = barcode || barcodeInput.trim();
     if (!code) return;
 
     const quantity = parseInt(barcodeQuantity) || 1;
+    console.log("🔍 Barcode search:", code, "Quantity:", quantity);
 
     api.get(`/product/barcode/${code}`)
       .then((res) => {
         if (res.data) {
-          onAddProduct(res.data); // Use the same logic
+          console.log("✅ Product found:", res.data.name);
+          console.log("📊 HasMultipleProductPrices:", res.data.hasMultipleProductPrices);
+
+          // Check for multiple prices (not batches)
+          if (res.data.hasMultipleProductPrices) {
+            onAddProduct(res.data);
+          } else {
+            const price = customerType === "wholesale" ? res.data.priceWholesale : res.data.priceRetail;
+            addToCart(res.data, price, quantity, null);
+          }
+
           if (!barcode) {
             setBarcodeInput("");
             setBarcodeQuantity(1);
+            setTimeout(() => {
+              document.getElementById('barcode-input')?.focus();
+            }, 100);
           }
         } else {
           alert("Product not found.");
@@ -627,7 +644,7 @@ export default function CashierPage() {
 
         {/* Barcode Input with Quantity */}
         <div className="bg-white border-b p-2">
-          <div className="flex gap-1">
+          <div className="flex gap-1 items-center">
             <input
               type="text"
               className="flex-grow border p-1 rounded text-xs"
@@ -635,21 +652,41 @@ export default function CashierPage() {
               value={barcodeInput}
               onChange={(e) => setBarcodeInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleBarcodeAdd();
+                if (e.key === "Enter") {
+                  handleBarcodeAdd();
+                  document.getElementById('barcode-quantity')?.focus();
+                }
               }}
               autoFocus
+              id="barcode-input"
             />
-            <input
-              type="number"
-              min="1"
-              value={barcodeQuantity}
-              onChange={(e) => setBarcodeQuantity(e.target.value)}
-              className="w-14 border p-1 rounded text-xs text-center"
-              placeholder="Qty"
-              title="Quantity"
-            />
+            <div className="flex items-center gap-1 bg-gray-100 rounded px-2">
+              <button
+                onClick={() => setBarcodeQuantity(Math.max(1, parseInt(barcodeQuantity) - 1))}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded font-bold text-sm"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min="1"
+                value={barcodeQuantity}
+                onChange={(e) => setBarcodeQuantity(e.target.value)}
+                className="w-12 border p-1 rounded text-xs text-center"
+                id="barcode-quantity"
+              />
+              <button
+                onClick={() => setBarcodeQuantity(parseInt(barcodeQuantity) + 1)}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded font-bold text-sm"
+              >
+                +
+              </button>
+            </div>
             <button
-              onClick={() => handleBarcodeAdd()}
+              onClick={() => {
+                handleBarcodeAdd();
+                document.getElementById('barcode-input')?.focus();
+              }}
               className="bg-blue-600 text-white px-3 rounded text-xs hover:bg-blue-700"
             >
               Add
@@ -696,12 +733,9 @@ export default function CashierPage() {
               </thead>
               <tbody>
                 {saleItems.map((item, index) => (
-                  <tr key={`${item.productId}-${item.batchId || item.price}-${index}`} className="border-b hover:bg-gray-100">
+                  <tr key={`${item.productId}-${item.sourceId || item.price}-${index}`} className="border-b hover:bg-gray-100">
                     <td className="p-1 text-xs">
                       {item.name}
-                      {item.batchNumber && (
-                        <div className="text-xs text-gray-500">Batch: {item.batchNumber}</div>
-                      )}
                       <div className="text-xs font-semibold text-green-600">
                         @ Rs {item.price.toFixed(2)}
                       </div>
@@ -709,14 +743,14 @@ export default function CashierPage() {
                     <td className="text-center p-1">
                       <div className="flex items-center justify-center gap-0.5">
                         <button
-                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.price, item.quantity - 1)}
+                          onClick={() => onUpdateQuantity(item.productId, item.sourceId, item.price, item.quantity - 1)}
                           className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
                         >
                           −
                         </button>
                         <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
                         <button
-                          onClick={() => onUpdateQuantity(item.productId, item.batchId, item.price, item.quantity + 1)}
+                          onClick={() => onUpdateQuantity(item.productId, item.sourceId, item.price, item.quantity + 1)}
                           className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
                         >
                           +
@@ -727,7 +761,7 @@ export default function CashierPage() {
                     <td className="text-right p-1 font-semibold text-xs">Rs {(item.price * item.quantity).toFixed(2)}</td>
                     <td className="p-1 text-center">
                       <button
-                        onClick={() => onRemoveSaleItem(item.productId, item.batchId, item.price)}
+                        onClick={() => onRemoveSaleItem(item.productId, item.sourceId, item.price)}
                         className="text-red-600 hover:text-red-800"
                         title="Delete"
                       >
@@ -1090,6 +1124,7 @@ export default function CashierPage() {
       <PriceSelectionModal
         isOpen={showPriceModal}
         onClose={() => {
+          console.log("❌ Modal closed");
           setShowPriceModal(false);
           setSelectedProduct(null);
           setPriceVariants([]);
@@ -1097,7 +1132,7 @@ export default function CashierPage() {
         product={selectedProduct}
         priceVariants={priceVariants}
         onSelectPrice={handlePriceSelect}
-        customerType={customerType} // Pass customer type for price calculation
+        customerType={customerType === "wholesale" ? "wholesale" : "retail"}
       />
     </div >
   );

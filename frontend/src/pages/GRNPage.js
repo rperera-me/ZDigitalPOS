@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
-import { setSuppliers, setProducts } from "../app/posSlice";
+import { setSuppliers, setProducts, setCategories } from "../app/posSlice";
 
 export default function GRNPage() {
     const dispatch = useDispatch();
     const suppliers = useSelector((state) => state.pos.suppliers);
     const products = useSelector((state) => state.pos.products);
+    const categories = useSelector((state) => state.pos.categories);
     const user = useSelector((state) => state.auth.user);
 
     const [supplierId, setSupplierId] = useState("");
@@ -17,18 +18,25 @@ export default function GRNPage() {
     // Item form
     const [selectedProductId, setSelectedProductId] = useState("");
     const [barcodeInput, setBarcodeInput] = useState("");
-    const [batchNumber, setBatchNumber] = useState("");
+    const [batchNumber, setBatchNumber] = useState(""); // Optional now
     const [quantity, setQuantity] = useState("");
     const [costPrice, setCostPrice] = useState("");
-    const [productPrice, setProductPrice] = useState(""); // ✅ ADDED
+    const [productPrice, setProductPrice] = useState("");
     const [sellingPrice, setSellingPrice] = useState("");
     const [wholesalePrice, setWholesalePrice] = useState("");
     const [manufactureDate, setManufactureDate] = useState("");
     const [expiryDate, setExpiryDate] = useState("");
 
+    // Add Product Modal
+    const [showAddProductModal, setShowAddProductModal] = useState(false);
+    const [newProductName, setNewProductName] = useState("");
+    const [newProductBarcode, setNewProductBarcode] = useState("");
+    const [newProductCategory, setNewProductCategory] = useState("");
+
     useEffect(() => {
         api.get("/supplier").then((res) => dispatch(setSuppliers(res.data)));
         api.get("/product").then((res) => dispatch(setProducts(res.data)));
+        api.get("/category").then((res) => dispatch(setCategories(res.data)));
         fetchGRNs();
     }, [dispatch]);
 
@@ -38,13 +46,12 @@ export default function GRNPage() {
 
     const handleBarcodeSearch = () => {
         if (!barcodeInput.trim()) return;
-        
+
         api.get(`/product/barcode/${barcodeInput.trim()}`)
             .then((res) => {
                 if (res.data) {
                     setSelectedProductId(res.data.id.toString());
                     setBarcodeInput("");
-                    // Auto-fill prices if available
                     if (res.data.priceWholesale) {
                         setWholesalePrice(res.data.priceWholesale.toString());
                     }
@@ -58,21 +65,28 @@ export default function GRNPage() {
             .catch(() => alert("Error searching for product"));
     };
 
+    const generateBatchNumber = () => {
+        return "BATCH" + Date.now().toString().slice(-8);
+    };
+
     const addItem = () => {
-        if (!selectedProductId || !batchNumber || !quantity || !costPrice || !productPrice || !sellingPrice) {
-            alert("Please fill all required fields (Product, Batch, Qty, Cost, Product Price, Selling Price)");
+        if (!selectedProductId || !quantity || !costPrice || !productPrice || !sellingPrice) {
+            alert("Please fill all required fields (Product, Qty, Cost, Product Price, Selling Price)");
             return;
         }
 
         const product = products.find((p) => p.id === parseInt(selectedProductId));
 
+        // Generate batch number if not provided
+        const finalBatchNumber = batchNumber || generateBatchNumber();
+
         const newItem = {
             productId: parseInt(selectedProductId),
             productName: product?.name || "",
-            batchNumber,
+            batchNumber: finalBatchNumber,
             quantity: parseInt(quantity),
             costPrice: parseFloat(costPrice),
-            productPrice: parseFloat(productPrice), // ✅ ADDED
+            productPrice: parseFloat(productPrice),
             sellingPrice: parseFloat(sellingPrice),
             wholesalePrice: parseFloat(wholesalePrice) || parseFloat(sellingPrice),
             manufactureDate: manufactureDate || null,
@@ -86,7 +100,7 @@ export default function GRNPage() {
         setBatchNumber("");
         setQuantity("");
         setCostPrice("");
-        setProductPrice(""); // ✅ ADDED
+        setProductPrice("");
         setSellingPrice("");
         setWholesalePrice("");
         setManufactureDate("");
@@ -127,6 +141,34 @@ export default function GRNPage() {
                 alert("Failed to create GRN");
                 console.error(err);
             });
+    };
+
+    const handleAddNewProduct = () => {
+        if (!newProductName || !newProductBarcode || !newProductCategory) {
+            alert("Please fill all required fields for new product");
+            return;
+        }
+
+        const productData = {
+            name: newProductName,
+            barcode: newProductBarcode,
+            categoryId: parseInt(newProductCategory),
+            stockQuantity: 0,
+            priceRetail: 0,
+            priceWholesale: 0,
+        };
+
+        api.post("/product", productData)
+            .then((res) => {
+                alert("Product added successfully!");
+                api.get("/product").then((res) => dispatch(setProducts(res.data)));
+                setSelectedProductId(res.data.id.toString());
+                setShowAddProductModal(false);
+                setNewProductName("");
+                setNewProductBarcode("");
+                setNewProductCategory("");
+            })
+            .catch(() => alert("Failed to add product"));
     };
 
     const totalAmount = items.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
@@ -191,9 +233,6 @@ export default function GRNPage() {
                         {/* Barcode Scanner */}
                         <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
                             <label className="block text-sm font-medium mb-2 text-blue-900">
-                                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                                </svg>
                                 Scan or Enter Barcode
                             </label>
                             <div className="flex gap-2">
@@ -220,25 +259,39 @@ export default function GRNPage() {
                         <div className="grid grid-cols-3 gap-3 mb-3">
                             <div className="col-span-3">
                                 <label className="block text-sm font-medium mb-1 text-gray-700">Product *</label>
-                                <select
-                                    value={selectedProductId}
-                                    onChange={(e) => setSelectedProductId(e.target.value)}
-                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                                >
-                                    <option value="">-- Select Product --</option>
-                                    {products.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name} ({p.barcode})
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={selectedProductId}
+                                        onChange={(e) => setSelectedProductId(e.target.value)}
+                                        className="flex-1 border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    >
+                                        <option value="">-- Select Product --</option>
+                                        {products.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.name} ({p.barcode})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        onClick={() => setShowAddProductModal(true)}
+                                        className="bg-green-600 text-white px-4 rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-1"
+                                        title="Add New Product"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add
+                                    </button>
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">Batch Number *</label>
+                                <label className="block text-sm font-medium mb-1 text-gray-700">
+                                    Batch Number (Optional)
+                                </label>
                                 <input
                                     type="text"
-                                    placeholder="Batch Number"
+                                    placeholder="Auto-generated if empty"
                                     value={batchNumber}
                                     onChange={(e) => setBatchNumber(e.target.value)}
                                     className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
@@ -259,7 +312,7 @@ export default function GRNPage() {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-gray-700">
-                                    Cost Price * 
+                                    Cost Price *
                                 </label>
                                 <input
                                     type="number"
@@ -272,18 +325,16 @@ export default function GRNPage() {
                                 />
                             </div>
 
-                            {/* ✅ ADDED PRODUCT PRICE */}
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-gray-700">
                                     Product Price (MRP) *
-                                    <span className="text-xs text-gray-500 ml-1">(Printed on product)</span>
                                 </label>
                                 <input
                                     type="number"
                                     placeholder="Product Price"
                                     value={productPrice}
                                     onChange={(e) => setProductPrice(e.target.value)}
-                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    className="w-full border-2 border-yellow-300 rounded-lg p-2 focus:outline-none focus:border-yellow-500 bg-yellow-50"
                                     step="0.01"
                                     min="0"
                                 />
@@ -292,7 +343,6 @@ export default function GRNPage() {
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-gray-700">
                                     Selling Price (Retail) *
-                                    <span className="text-xs text-gray-500 ml-1">(What customers pay)</span>
                                 </label>
                                 <input
                                     type="number"
@@ -308,7 +358,6 @@ export default function GRNPage() {
                             <div>
                                 <label className="block text-sm font-medium mb-1 text-gray-700">
                                     Wholesale Price
-                                    <span className="text-xs text-gray-500 ml-1">(Bulk buyers)</span>
                                 </label>
                                 <input
                                     type="number"
@@ -374,7 +423,7 @@ export default function GRNPage() {
                                             {items.map((item, index) => (
                                                 <tr key={index} className="border-t hover:bg-gray-50">
                                                     <td className="p-2">{item.productName}</td>
-                                                    <td className="p-2">{item.batchNumber}</td>
+                                                    <td className="p-2 font-mono text-xs">{item.batchNumber}</td>
                                                     <td className="p-2 text-center font-semibold">{item.quantity}</td>
                                                     <td className="p-2 text-right">Rs {item.costPrice.toFixed(2)}</td>
                                                     <td className="p-2 text-right text-yellow-600 font-semibold">Rs {item.productPrice.toFixed(2)}</td>
@@ -417,13 +466,10 @@ export default function GRNPage() {
                     </div>
                 </div>
 
-                {/* Recent GRNs - Same as before */}
+                {/* Recent GRNs */}
                 <div className="col-span-1">
                     <div className="bg-white rounded-lg shadow-md p-6 sticky top-8">
                         <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
                             Recent GRNs
                         </h3>
                         <div className="space-y-3 max-h-[700px] overflow-y-auto">
@@ -461,6 +507,80 @@ export default function GRNPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Add Product Modal */}
+            {showAddProductModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold">Add New Product</h3>
+                            <button
+                                onClick={() => setShowAddProductModal(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Product Name *</label>
+                                <input
+                                    type="text"
+                                    value={newProductName}
+                                    onChange={(e) => setNewProductName(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    placeholder="Enter product name"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Barcode *</label>
+                                <input
+                                    type="text"
+                                    value={newProductBarcode}
+                                    onChange={(e) => setNewProductBarcode(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                    placeholder="Enter barcode"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Category *</label>
+                                <select
+                                    value={newProductCategory}
+                                    onChange={(e) => setNewProductCategory(e.target.value)}
+                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="">Select Category</option>
+                                    {categories.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex gap-2 pt-4">
+                                <button
+                                    onClick={() => setShowAddProductModal(false)}
+                                    className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAddNewProduct}
+                                    className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                                >
+                                    Add Product
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

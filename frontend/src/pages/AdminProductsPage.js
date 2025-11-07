@@ -11,17 +11,18 @@ export default function AdminProductsPage() {
 
   const [name, setName] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [priceRetail, setPriceRetail] = useState("");
-  const [priceWholesale, setPriceWholesale] = useState("");
-  const [stockQuantity, setStockQuantity] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [supplierId, setSupplierId] = useState("");
+  const [stockQuantity, setStockQuantity] = useState("");
 
-  // Batch fields
-  const [batchNumber, setBatchNumber] = useState("");
+  // Price fields - shown only when quantity > 0
   const [costPrice, setCostPrice] = useState("");
+  const [productPrice, setProductPrice] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
+  const [wholesalePrice, setWholesalePrice] = useState("");
+  const [supplierId, setSupplierId] = useState("");
   const [manufactureDate, setManufactureDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+
   const [barcodeScanned, setBarcodeScanned] = useState("");
   const [viewingStockByPrice, setViewingStockByPrice] = useState(null);
   const [priceBreakdown, setPriceBreakdown] = useState([]);
@@ -32,13 +33,11 @@ export default function AdminProductsPage() {
     api.get("/supplier").then((res) => dispatch(setSuppliers(res.data)));
   }, [dispatch]);
 
-  // Auto-generate barcode if empty
   const generateBarcode = () => {
     const randomBarcode = "PRD" + Date.now().toString().slice(-10);
     setBarcode(randomBarcode);
   };
 
-  // Barcode scanner
   const handleBarcodeInput = (e) => {
     if (e.key === "Enter") {
       setBarcode(barcodeScanned);
@@ -49,35 +48,44 @@ export default function AdminProductsPage() {
   const resetForm = () => {
     setName("");
     setBarcode("");
-    setPriceRetail("");
-    setPriceWholesale("");
-    setStockQuantity("");
     setCategoryId("");
-    setSupplierId("");
-    setBatchNumber("");
+    setStockQuantity("");
     setCostPrice("");
+    setProductPrice("");
+    setSellingPrice("");
+    setWholesalePrice("");
+    setSupplierId("");
     setManufactureDate("");
     setExpiryDate("");
   };
 
+  const hasQuantity = parseInt(stockQuantity) > 0;
+
   const addProduct = () => {
-    if (!name || !barcode || !priceRetail || !categoryId) {
-      alert("Please fill all required fields.");
+    if (!name || !barcode || !categoryId) {
+      alert("Please fill all required fields (Name, Barcode, Category).");
       return;
+    }
+
+    // If quantity > 0, validate pricing fields
+    if (hasQuantity) {
+      if (!costPrice || !productPrice || !sellingPrice || !wholesalePrice) {
+        alert("All price fields are required when stock quantity > 0");
+        return;
+      }
     }
 
     const productData = {
       name,
       barcode,
-      priceRetail: parseFloat(priceRetail),
-      priceWholesale: parseFloat(priceWholesale) || 0,
-      stockQuantity: parseInt(stockQuantity) || 0,
       categoryId: parseInt(categoryId),
+      stockQuantity: parseInt(stockQuantity) || 0,
+      priceRetail: parseFloat(sellingPrice) || 0,
+      priceWholesale: parseFloat(wholesalePrice) || 0,
       defaultSupplierId: supplierId ? parseInt(supplierId) : null,
-      batchNumber: batchNumber || null,
-      costPrice: costPrice ? parseFloat(costPrice) : null,
-      productPrice: priceRetail ? parseFloat(priceRetail) : null,
-      sellingPrice: priceRetail ? parseFloat(priceRetail) : null,
+      costPrice: hasQuantity ? parseFloat(costPrice) : null,
+      productPrice: hasQuantity ? parseFloat(productPrice) : null,
+      sellingPrice: hasQuantity ? parseFloat(sellingPrice) : null,
       manufactureDate: manufactureDate || null,
       expiryDate: expiryDate || null,
     };
@@ -145,9 +153,12 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
+        {/* Required Fields */}
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Product Name *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Product Name <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
@@ -158,7 +169,9 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Barcode *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Barcode <span className="text-red-500">*</span>
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -180,7 +193,9 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Category *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Category <span className="text-red-500">*</span>
+            </label>
             <select
               className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
               value={categoryId}
@@ -196,53 +211,13 @@ export default function AdminProductsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Default Supplier</label>
-            <select
-              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            >
-              <option value="">Select Supplier</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Retail Price *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Stock Quantity (Optional)
+            </label>
             <input
               type="number"
               className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-              placeholder="Retail Price"
-              value={priceRetail}
-              onChange={(e) => setPriceRetail(e.target.value)}
-              min="0"
-              step="0.01"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Wholesale Price</label>
-            <input
-              type="number"
-              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-              placeholder="Wholesale Price"
-              value={priceWholesale}
-              onChange={(e) => setPriceWholesale(e.target.value)}
-              min="0"
-              step="0.01"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Stock Quantity</label>
-            <input
-              type="number"
-              className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-              placeholder="Stock Qty"
+              placeholder="Stock Quantity"
               value={stockQuantity}
               onChange={(e) => setStockQuantity(e.target.value)}
               min="0"
@@ -250,59 +225,120 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        <div className="border-t-2 border-gray-200 pt-4 mt-4">
-          <h4 className="font-semibold mb-3 text-gray-700 flex items-center gap-2">
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            Optional: Initial Batch Details
-          </h4>
-          <div className="grid grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Batch Number</label>
-              <input
-                type="text"
-                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                placeholder="Batch Number"
-                value={batchNumber}
-                onChange={(e) => setBatchNumber(e.target.value)}
-              />
+        {/* Conditional Price Fields - Show only when quantity > 0 */}
+        {hasQuantity && (
+          <div className="border-t-2 border-gray-200 pt-4 mt-4">
+            <h4 className="font-semibold mb-3 text-gray-700 flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Pricing Details <span className="text-red-500 text-sm">(Required when quantity &gt; 0)</span>
+            </h4>
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Cost Price <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 block">Your purchase price</span>
+                </label>
+                <input
+                  type="number"
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  placeholder="Cost Price"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Product Price (MRP) <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 block">Printed on product</span>
+                </label>
+                <input
+                  type="number"
+                  className="w-full border-2 border-yellow-300 rounded-lg p-2 focus:outline-none focus:border-yellow-500 bg-yellow-50"
+                  placeholder="Product Price"
+                  value={productPrice}
+                  onChange={(e) => setProductPrice(e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Selling Price <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 block">Retail customer pays</span>
+                </label>
+                <input
+                  type="number"
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  placeholder="Selling Price"
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Wholesale Price <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 block">Bulk buyers</span>
+                </label>
+                <input
+                  type="number"
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  placeholder="Wholesale Price"
+                  value={wholesalePrice}
+                  onChange={(e) => setWholesalePrice(e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Cost Price</label>
-              <input
-                type="number"
-                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                placeholder="Cost Price"
-                value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value)}
-                min="0"
-                step="0.01"
-              />
-            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Default Supplier</label>
+                <select
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  value={supplierId}
+                  onChange={(e) => setSupplierId(e.target.value)}
+                >
+                  <option value="">Select Supplier</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Manufacture Date</label>
-              <input
-                type="date"
-                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                value={manufactureDate}
-                onChange={(e) => setManufactureDate(e.target.value)}
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Manufacture Date</label>
+                <input
+                  type="date"
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  value={manufactureDate}
+                  onChange={(e) => setManufactureDate(e.target.value)}
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Expiry Date</label>
-              <input
-                type="date"
-                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Expiry Date</label>
+                <input
+                  type="date"
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-6 flex gap-3">
           <button
@@ -323,6 +359,7 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* Products List Table */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -337,31 +374,25 @@ export default function AdminProductsPage() {
           <table className="w-full">
             <thead className="bg-gray-100">
               <tr>
-                <th className="p-3 text-left text-sm font-semibold">ID</th>
                 <th className="p-3 text-left text-sm font-semibold">Name</th>
                 <th className="p-3 text-left text-sm font-semibold">Barcode</th>
                 <th className="p-3 text-left text-sm font-semibold">Category</th>
-                <th className="p-3 text-left text-sm font-semibold">Supplier</th>
-                <th className="p-3 text-right text-sm font-semibold">
-                  <div>Price Range</div>
-                  <div className="text-xs font-normal text-gray-500">(MRP / Selling / Wholesale)</div>
-                </th>
-                <th className="p-3 text-center text-sm font-semibold">Stock Qty</th>
+                <th className="p-3 text-right text-sm font-semibold">Price Range</th>
+                <th className="p-3 text-center text-sm font-semibold">Stock</th>
                 <th className="p-3 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {products.map((p) => {
-                // Calculate price display
-                const showPriceRange = p.hasMultipleBatches;
+                // ✅ NO BATCH LOGIC - Check hasMultipleProductPrices
+                const showPriceRange = p.hasMultipleProductPrices;
+                const category = categories.find(c => c.id === p.categoryId);
 
                 return (
                   <tr key={p.id} className="border-t hover:bg-gray-50">
-                    <td className="p-3 text-sm">{p.id}</td>
                     <td className="p-3 text-sm font-medium">{p.name}</td>
                     <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
-                    <td className="p-3 text-sm">{p.categoryName || ""}</td>
-                    <td className="p-3 text-sm">{p.defaultSupplierName || "-"}</td>
+                    <td className="p-3 text-sm">{category?.name || '-'}</td>
                     <td className="p-3 text-right">
                       {showPriceRange ? (
                         <div className="text-sm">
@@ -375,14 +406,11 @@ export default function AdminProductsPage() {
                         </div>
                       ) : (
                         <div className="text-sm space-y-0.5">
-                          <div className="text-gray-600">
-                            <span className="text-xs">MRP:</span> Rs {p.priceRetail.toFixed(2)}
-                          </div>
                           <div className="text-green-600 font-semibold">
-                            <span className="text-xs">Sell:</span> Rs {p.priceRetail.toFixed(2)}
+                            Rs {p.priceRetail.toFixed(2)}
                           </div>
-                          <div className="text-orange-600">
-                            <span className="text-xs">W/S:</span> Rs {p.priceWholesale.toFixed(2)}
+                          <div className="text-orange-600 text-xs">
+                            W/S: Rs {p.priceWholesale.toFixed(2)}
                           </div>
                         </div>
                       )}
@@ -397,7 +425,7 @@ export default function AdminProductsPage() {
                         onClick={() => viewStockByPrice(p)}
                         className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm font-semibold"
                       >
-                        {showPriceRange ? 'View Prices' : 'View Details'}
+                        View Details
                       </button>
                     </td>
                   </tr>
@@ -408,13 +436,16 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* Price Modal */}
       {viewingStockByPrice && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-xl font-bold">{viewingStockByPrice.name}</h3>
-                <p className="text-sm text-gray-600">Stock breakdown by product price</p>
+                <p className="text-sm text-gray-600">
+                  Stock breakdown by product price
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -429,127 +460,36 @@ export default function AdminProductsPage() {
               </button>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                <div className="text-sm text-blue-600 mb-1">Total Stock</div>
-                <div className="text-2xl font-bold text-blue-800">
-                  {priceBreakdown.reduce((sum, v) => sum + v.totalStock, 0)} units
-                </div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
-                <div className="text-sm text-green-600 mb-1">Price Variants</div>
-                <div className="text-2xl font-bold text-green-800">
-                  {priceBreakdown.length}
-                </div>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                <div className="text-sm text-purple-600 mb-1">Lowest Selling Price</div>
-                <div className="text-2xl font-bold text-purple-800">
-                  {priceBreakdown.length > 0 && (
-                    <>Rs {Math.min(...priceBreakdown.map(v => v.sellingPrice)).toFixed(2)}</>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Price Breakdown Table */}
             {priceBreakdown.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <p>No price variants found</p>
-                <p className="text-sm mt-2">Product uses default pricing or has no batches yet</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {priceBreakdown.map((variant, index) => {
-                  const discount = variant.productPrice > variant.sellingPrice
-                    ? ((variant.productPrice - variant.sellingPrice) / variant.productPrice * 100).toFixed(1)
-                    : 0;
-
-                  return (
-                    <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden">
-                      {/* Price Header */}
-                      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
-                        <div className="grid grid-cols-4 gap-4">
-                          <div>
-                            <div className="text-xs opacity-80">Product Price (MRP)</div>
-                            <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs opacity-80">Selling Price (Retail)</div>
-                            <div className="text-xl font-semibold flex items-center gap-2">
-                              Rs {variant.sellingPrice.toFixed(2)}
-                              {discount > 0 && (
-                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-                                  {discount}% OFF
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs opacity-80">Wholesale Price</div>
-                            <div className="text-xl font-semibold">Rs {variant.wholesalePrice.toFixed(2)}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs opacity-80">Total Stock</div>
-                            <div className="text-2xl font-bold">{variant.totalStock} units</div>
-                          </div>
+                {priceBreakdown.map((variant, index) => (
+                  <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
+                      <div className="grid grid-cols-4 gap-4">
+                        <div>
+                          <div className="text-xs opacity-80">Product Price</div>
+                          <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs opacity-80">Selling Price</div>
+                          <div className="text-xl font-semibold">Rs {variant.sellingPrice.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs opacity-80">Wholesale Price</div>
+                          <div className="text-xl font-semibold">Rs {variant.wholesalePrice.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs opacity-80">Total Stock</div>
+                          <div className="text-2xl font-bold">{variant.totalStock} units</div>
                         </div>
                       </div>
-
-                      {/* GRN Sources */}
-                      <div className="p-4 bg-gray-50">
-                        <h4 className="font-semibold mb-3 text-sm text-gray-700 flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                          </svg>
-                          Stock Sources ({variant.sources.length} batch{variant.sources.length !== 1 ? 'es' : ''}):
-                        </h4>
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b bg-white">
-                              <th className="text-left p-2">Source</th>
-                              <th className="text-left p-2">GRN Number</th>
-                              <th className="text-left p-2">Batch Number</th>
-                              <th className="text-center p-2">Stock</th>
-                              <th className="text-left p-2">Received Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {variant.sources.map((source, idx) => (
-                              <tr key={idx} className="border-b hover:bg-white">
-                                <td className="p-2">
-                                  {source.grnId ? (
-                                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-semibold">
-                                      GRN
-                                    </span>
-                                  ) : (
-                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">
-                                      Initial Stock
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="p-2 font-mono text-blue-600">
-                                  {source.grnNumber || '-'}
-                                </td>
-                                <td className="p-2 font-mono">{source.batchNumber}</td>
-                                <td className="text-center p-2">
-                                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
-                                    {source.stock}
-                                  </span>
-                                </td>
-                                <td className="p-2 text-gray-600">
-                                  {new Date(source.receivedDate).toLocaleDateString()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
                     </div>
-                  );
-                }
-                )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
