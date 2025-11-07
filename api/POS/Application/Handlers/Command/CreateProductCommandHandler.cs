@@ -10,39 +10,6 @@ namespace POS.Application.Handlers.Command
 {
     public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, ProductDto>
     {
-        //private readonly IProductRepository _repository;
-
-        //public CreateProductCommandHandler(IProductRepository repository)
-        //{
-        //    _repository = repository;
-        //}
-
-        //public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)
-        //{
-        //    var entity = new Product
-        //    {
-        //        Barcode = request.Barcode,
-        //        Name = request.Name,
-        //        CategoryId = request.CategoryId,
-        //        PriceRetail = request.PriceRetail,
-        //        PriceWholesale = request.PriceWholesale,
-        //        StockQuantity = request.StockQuantity
-        //    };
-
-        //    var created = await _repository.AddAsync(entity);
-
-        //    return new ProductDto
-        //    {
-        //        Id = created.Id,
-        //        Barcode = created.Barcode,
-        //        Name = created.Name,
-        //        CategoryId = created.CategoryId,
-        //        PriceRetail = created.PriceRetail,
-        //        PriceWholesale = created.PriceWholesale,
-        //        StockQuantity = created.StockQuantity
-        //    };
-        //}
-
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICategoryRepository _categoryRepository;
@@ -71,21 +38,21 @@ namespace POS.Application.Handlers.Command
                 PriceRetail = request.PriceRetail,
                 PriceWholesale = request.PriceWholesale,
                 StockQuantity = request.StockQuantity,
-                HasMultipleBatches = !string.IsNullOrEmpty(request.BatchNumber)
+                HasMultipleProductPrices = false // Will be set to true when second different price is added via GRN
             };
 
             var created = await _productRepository.AddAsync(entity);
 
-            // If batch information is provided, create initial batch
-            if (!string.IsNullOrEmpty(request.BatchNumber) && request.DefaultSupplierId.HasValue)
+            // If stock quantity > 0 and price information is provided, create initial price source
+            if (request.StockQuantity > 0 && request.ProductPrice.HasValue)
             {
                 var batch = new ProductBatch
                 {
                     ProductId = created.Id,
-                    BatchNumber = request.BatchNumber,
-                    SupplierId = request.DefaultSupplierId.Value,
+                    BatchNumber = request.BatchNumber ?? "INITIAL",
+                    SupplierId = request.DefaultSupplierId ?? 0,
                     CostPrice = request.CostPrice ?? 0,
-                    ProductPrice = request.ProductPrice ?? request.PriceRetail,
+                    ProductPrice = request.ProductPrice.Value,
                     SellingPrice = request.SellingPrice ?? request.PriceRetail,
                     WholesalePrice = request.PriceWholesale,
                     Quantity = request.StockQuantity,
@@ -117,7 +84,7 @@ namespace POS.Application.Handlers.Command
                 PriceRetail = created.PriceRetail,
                 PriceWholesale = created.PriceWholesale,
                 StockQuantity = created.StockQuantity,
-                HasMultipleBatches = created.HasMultipleBatches
+                HasMultipleProductPrices = created.HasMultipleProductPrices
             };
         }
     }

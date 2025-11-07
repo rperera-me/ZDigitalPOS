@@ -22,9 +22,13 @@ namespace POS.Application.Handlers.Query
         {
             var batches = await _batchRepository.GetActiveBatchesByProductIdAsync(request.ProductId);
 
-            // Group by ProductPrice (the price printed on product)
+            // ✅ Group ONLY by ProductPrice (MRP) - no batch logic
             var priceGroups = batches
-                .GroupBy(b => new { b.ProductPrice, b.SellingPrice, b.WholesalePrice })
+                .GroupBy(b => new {
+                    ProductPrice = Math.Round(b.ProductPrice, 2),
+                    SellingPrice = Math.Round(b.SellingPrice, 2),
+                    WholesalePrice = Math.Round(b.WholesalePrice, 2)
+                })
                 .Select(g => new ProductPriceVariantDto
                 {
                     ProductPrice = g.Key.ProductPrice,
@@ -33,10 +37,10 @@ namespace POS.Application.Handlers.Query
                     TotalStock = g.Sum(b => b.RemainingQuantity),
                     Sources = g.Select(b => new PriceVariantSourceDto
                     {
-                        GRNId = b.GRNId, // Can be null for initial stock
-                        GRNNumber = "", // Will be populated below
-                        BatchId = b.Id, // ✅ ADDED - Include batch ID
-                        BatchNumber = b.BatchNumber,
+                        GRNId = b.GRNId,
+                        GRNNumber = "",
+                        SourceId = b.Id, // Just ID, no batch logic
+                        SourceReference = b.BatchNumber, // Optional reference
                         Stock = b.RemainingQuantity,
                         ReceivedDate = b.ReceivedDate
                     }).ToList()
@@ -44,7 +48,7 @@ namespace POS.Application.Handlers.Query
                 .OrderBy(pv => pv.ProductPrice)
                 .ToList();
 
-            // Populate GRN numbers (only for batches that have GRN)
+            // Populate GRN numbers
             foreach (var variant in priceGroups)
             {
                 foreach (var source in variant.Sources)
@@ -56,7 +60,7 @@ namespace POS.Application.Handlers.Query
                     }
                     else
                     {
-                        source.GRNNumber = "Initial Stock"; // ✅ Label for initial inventory
+                        source.GRNNumber = "Initial Stock";
                     }
                 }
             }

@@ -50,7 +50,7 @@ namespace POS.Application.Handlers.Command
 
             var created = await _grnRepository.AddAsync(grn);
 
-            // Create product batches
+            // Create product batches and check for multiple prices
             foreach (var item in request.Items)
             {
                 var batch = new ProductBatch
@@ -59,8 +59,7 @@ namespace POS.Application.Handlers.Command
                     BatchNumber = item.BatchNumber,
                     SupplierId = request.SupplierId,
                     CostPrice = item.CostPrice,
-                    // ✅ FIXED: Use ProductPrice from request instead of calculating
-                    ProductPrice = item.ProductPrice ?? item.SellingPrice, // Fallback to SellingPrice if not provided
+                    ProductPrice = item.ProductPrice ?? item.SellingPrice,
                     SellingPrice = item.SellingPrice,
                     WholesalePrice = item.WholesalePrice,
                     Quantity = item.Quantity,
@@ -79,7 +78,16 @@ namespace POS.Application.Handlers.Command
                 if (product != null)
                 {
                     product.StockQuantity += item.Quantity;
-                    product.HasMultipleBatches = true;
+
+                    // ✅ CHECK FOR MULTIPLE PRODUCT PRICES
+                    var existingBatches = await _batchRepository.GetActiveBatchesByProductIdAsync(item.ProductId);
+                    var distinctPrices = existingBatches
+                        .Select(b => Math.Round(b.ProductPrice, 2))
+                        .Distinct()
+                        .Count();
+
+                    product.HasMultipleProductPrices = distinctPrices > 1;
+
                     await _productRepository.UpdateAsync(product);
                 }
             }
