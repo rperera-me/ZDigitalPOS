@@ -9,6 +9,7 @@ export default function AdminProductsPage() {
   const categories = useSelector((state) => state.pos.categories);
   const suppliers = useSelector((state) => state.pos.suppliers);
 
+  // ✅ ALL STATE VARIABLES - Including batchNumber
   const [name, setName] = useState("");
   const [barcode, setBarcode] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -20,6 +21,7 @@ export default function AdminProductsPage() {
   const [sellingPrice, setSellingPrice] = useState("");
   const [wholesalePrice, setWholesalePrice] = useState("");
   const [supplierId, setSupplierId] = useState("");
+  const [batchNumber, setBatchNumber] = useState(""); // ✅ ADDED - Was missing!
   const [manufactureDate, setManufactureDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
 
@@ -55,6 +57,7 @@ export default function AdminProductsPage() {
     setSellingPrice("");
     setWholesalePrice("");
     setSupplierId("");
+    setBatchNumber(""); // ✅ RESET batchNumber too
     setManufactureDate("");
     setExpiryDate("");
   };
@@ -69,8 +72,8 @@ export default function AdminProductsPage() {
 
     // If quantity > 0, validate pricing fields
     if (hasQuantity) {
-      if (!costPrice || !productPrice || !sellingPrice || !wholesalePrice) {
-        alert("All price fields are required when stock quantity > 0");
+      if (!costPrice || !productPrice || !sellingPrice) {
+        alert("Cost Price, Product Price (MRP), and Selling Price are required when stock quantity > 0");
         return;
       }
     }
@@ -80,14 +83,18 @@ export default function AdminProductsPage() {
       barcode,
       categoryId: parseInt(categoryId),
       stockQuantity: parseInt(stockQuantity) || 0,
-      priceRetail: parseFloat(sellingPrice) || 0,
-      priceWholesale: parseFloat(wholesalePrice) || 0,
       defaultSupplierId: supplierId ? parseInt(supplierId) : null,
-      costPrice: hasQuantity ? parseFloat(costPrice) : null,
-      productPrice: hasQuantity ? parseFloat(productPrice) : null,
-      sellingPrice: hasQuantity ? parseFloat(sellingPrice) : null,
-      manufactureDate: manufactureDate || null,
-      expiryDate: expiryDate || null,
+
+      // ✅ Only send batch/price data if stock > 0
+      ...(hasQuantity && {
+        batchNumber: batchNumber || null,
+        costPrice: parseFloat(costPrice),
+        productPrice: parseFloat(productPrice),
+        sellingPrice: parseFloat(sellingPrice),
+        wholesalePrice: parseFloat(wholesalePrice) || parseFloat(sellingPrice),
+        manufactureDate: manufactureDate || null,
+        expiryDate: expiryDate || null,
+      })
     };
 
     api
@@ -97,7 +104,10 @@ export default function AdminProductsPage() {
         api.get("/product").then((res) => dispatch(setProducts(res.data)));
         alert("Product added successfully!");
       })
-      .catch(() => alert("Failed to add product."));
+      .catch((err) => {
+        console.error("Failed to add product:", err);
+        alert("Failed to add product: " + (err.response?.data?.message || err.message));
+      });
   };
 
   const viewStockByPrice = (product) => {
@@ -107,6 +117,13 @@ export default function AdminProductsPage() {
         setViewingStockByPrice(product);
       })
       .catch(() => alert("Failed to load price breakdown"));
+  };
+
+  // Helper to format price range
+  const formatPriceRange = (min, max) => {
+    if (!min && !max) return '-';
+    if (!max || min === max) return `Rs ${min?.toFixed(2) || '0.00'}`;
+    return `Rs ${min?.toFixed(2)} - ${max?.toFixed(2)}`;
   };
 
   return (
@@ -234,6 +251,40 @@ export default function AdminProductsPage() {
               </svg>
               Pricing Details <span className="text-red-500 text-sm">(Required when quantity &gt; 0)</span>
             </h4>
+
+            {/* ✅ Batch Number Field - Added Here */}
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Batch Number (Optional)
+                  <span className="text-xs text-gray-500 block">Auto-generated if empty</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  placeholder="e.g., BATCH001"
+                  value={batchNumber}
+                  onChange={(e) => setBatchNumber(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Default Supplier</label>
+                <select
+                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                  value={supplierId}
+                  onChange={(e) => setSupplierId(e.target.value)}
+                >
+                  <option value="">Select Supplier</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
@@ -285,7 +336,7 @@ export default function AdminProductsPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Wholesale Price <span className="text-red-500">*</span>
+                  Wholesale Price
                   <span className="text-xs text-gray-500 block">Bulk buyers</span>
                 </label>
                 <input
@@ -300,23 +351,7 @@ export default function AdminProductsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">Default Supplier</label>
-                <select
-                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                  value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                >
-                  <option value="">Select Supplier</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">Manufacture Date</label>
                 <input
@@ -377,14 +412,14 @@ export default function AdminProductsPage() {
                 <th className="p-3 text-left text-sm font-semibold">Name</th>
                 <th className="p-3 text-left text-sm font-semibold">Barcode</th>
                 <th className="p-3 text-left text-sm font-semibold">Category</th>
-                <th className="p-3 text-right text-sm font-semibold">Price Range</th>
+                <th className="p-3 text-right text-sm font-semibold">Cost Price</th>
+                <th className="p-3 text-right text-sm font-semibold">Selling Price</th>
                 <th className="p-3 text-center text-sm font-semibold">Stock</th>
                 <th className="p-3 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {products.map((p) => {
-                // ✅ NO BATCH LOGIC - Check hasMultipleProductPrices
                 const showPriceRange = p.hasMultipleProductPrices;
                 const category = categories.find(c => c.id === p.categoryId);
 
@@ -393,33 +428,72 @@ export default function AdminProductsPage() {
                     <td className="p-3 text-sm font-medium">{p.name}</td>
                     <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
                     <td className="p-3 text-sm">{category?.name || '-'}</td>
+
+                    {/* Cost Price Column */}
+                    <td className="p-3 text-right">
+                      <div className="text-sm">
+                        {showPriceRange ? (
+                          <div className="space-y-0.5">
+                            <div className="text-orange-600 font-semibold">
+                              {formatPriceRange(p.minCostPrice, p.maxCostPrice)}
+                            </div>
+                            <div className="text-xs text-gray-500">Multiple costs</div>
+                          </div>
+                        ) : (
+                          <div className="text-orange-600 font-semibold">
+                            {p.minCostPrice ? `Rs ${p.minCostPrice.toFixed(2)}` : '-'}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Selling Price Column */}
                     <td className="p-3 text-right">
                       {showPriceRange ? (
-                        <div className="text-sm">
+                        <div className="text-sm space-y-0.5">
                           <div className="text-blue-600 font-semibold">Multiple Prices</div>
+                          <div className="text-xs text-gray-600">
+                            MRP: {formatPriceRange(p.minProductPrice, p.maxProductPrice)}
+                          </div>
+                          <div className="text-xs text-green-600">
+                            Retail: {formatPriceRange(p.minSellingPrice, p.maxSellingPrice)}
+                          </div>
+                          <div className="text-xs text-purple-600">
+                            W/S: {formatPriceRange(p.minWholesalePrice, p.maxWholesalePrice)}
+                          </div>
                           <button
                             onClick={() => viewStockByPrice(p)}
-                            className="text-xs text-purple-600 hover:text-purple-800 underline"
+                            className="text-xs text-purple-600 hover:text-purple-800 underline mt-1"
                           >
                             View Details →
                           </button>
                         </div>
                       ) : (
                         <div className="text-sm space-y-0.5">
+                          {p.minProductPrice && (
+                            <div className="text-xs text-gray-600">
+                              MRP: Rs {p.minProductPrice.toFixed(2)}
+                            </div>
+                          )}
                           <div className="text-green-600 font-semibold">
-                            Rs {p.priceRetail.toFixed(2)}
+                            {p.minSellingPrice ? `Rs ${p.minSellingPrice.toFixed(2)}` : '-'}
                           </div>
-                          <div className="text-orange-600 text-xs">
-                            W/S: Rs {p.priceWholesale.toFixed(2)}
-                          </div>
+                          {p.minWholesalePrice && (
+                            <div className="text-purple-600 text-xs">
+                              W/S: Rs {p.minWholesalePrice.toFixed(2)}
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>
+
                     <td className="p-3 text-center">
-                      <span className={`px-2 py-1 rounded text-sm font-semibold ${p.stockQuantity <= 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                      <span className={`px-2 py-1 rounded text-sm font-semibold ${p.stockQuantity <= 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                        }`}>
                         {p.stockQuantity}
                       </span>
                     </td>
+
                     <td className="p-3 text-center">
                       <button
                         onClick={() => viewStockByPrice(p)}
@@ -436,7 +510,7 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Price Modal */}
+      {/* Price Breakdown Modal */}
       {viewingStockByPrice && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
@@ -471,7 +545,7 @@ export default function AdminProductsPage() {
                     <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
                       <div className="grid grid-cols-4 gap-4">
                         <div>
-                          <div className="text-xs opacity-80">Product Price</div>
+                          <div className="text-xs opacity-80">Product Price (MRP)</div>
                           <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
                         </div>
                         <div>

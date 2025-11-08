@@ -185,7 +185,7 @@ export default function CashierPage() {
   function onAddProduct(product) {
     console.log("🔍 Adding product:", product.name, "HasMultipleProductPrices:", product.hasMultipleProductPrices);
 
-    // ✅ Check if product has multiple PRICES (not batches)
+    // Check if product has multiple PRICES (not batches)
     if (product.hasMultipleProductPrices) {
       console.log("💰 Product has multiple prices, fetching variants...");
 
@@ -205,27 +205,33 @@ export default function CashierPage() {
             const variant = res.data[0];
             const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
 
-            // Get source ID (no batch logic)
             const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
             const sourceId = firstSource?.sourceId || null;
 
             addToCart(product, price, 1, sourceId);
           } else {
-            // No variants - use default
-            console.log("⚠️ No price variants - using default");
-            const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
+            // No variants - use default prices (fallback)
+            console.log("⚠️ No price variants - using min prices");
+            const price = customerType === "wholesale"
+              ? (product.minWholesalePrice || product.minSellingPrice || 0)
+              : (product.minSellingPrice || 0);
             addToCart(product, price, 1, null);
           }
         })
         .catch((err) => {
           console.error("❌ Error fetching variants:", err);
-          const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
+          // Fallback to min prices
+          const price = customerType === "wholesale"
+            ? (product.minWholesalePrice || product.minSellingPrice || 0)
+            : (product.minSellingPrice || 0);
           addToCart(product, price, 1, null);
         });
     } else {
-      // No multiple prices - use default
-      console.log("📝 Single price product - using default");
-      const price = customerType === "wholesale" ? product.priceWholesale : product.priceRetail;
+      // No multiple prices - use min/default prices
+      console.log("📝 Single price product - using min prices");
+      const price = customerType === "wholesale"
+        ? (product.minWholesalePrice || product.minSellingPrice || 0)
+        : (product.minSellingPrice || 0);
       addToCart(product, price, 1, null);
     }
   }
@@ -254,9 +260,14 @@ export default function CashierPage() {
 
           // Check for multiple prices (not batches)
           if (res.data.hasMultipleProductPrices) {
+            // Will trigger price selection modal
             onAddProduct(res.data);
           } else {
-            const price = customerType === "wholesale" ? res.data.priceWholesale : res.data.priceRetail;
+            // Use min prices directly
+            const price = customerType === "wholesale"
+              ? (res.data.minWholesalePrice || res.data.minSellingPrice || 0)
+              : (res.data.minSellingPrice || 0);
+
             addToCart(res.data, price, quantity, null);
           }
 
@@ -536,23 +547,44 @@ export default function CashierPage() {
         </div>
 
         {/* Products Grid */}
-        <div className="flex-1 overflow-y-auto p-3">
-          {filteredProducts.length === 0 ? (
-            <p className="text-gray-400 text-center">No products found.</p>
-          ) : (
-            <div className="grid grid-cols-4 gap-2">
-              {filteredProducts.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => onAddProduct(p)}
-                  className="border rounded p-2 hover:bg-blue-50 text-left text-sm"
-                >
-                  <div className="font-semibold truncate">{p.name}</div>
-                  <div className="text-blue-600 font-bold">Rs {p.priceRetail.toFixed(2)}</div>
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="grid grid-cols-4 gap-2">
+          {filteredProducts.map((p) => {
+            // Get the lowest selling price to display
+            const displayPrice = p.minSellingPrice || 0;
+            const hasStock = p.stockQuantity > 0;
+
+            return (
+              <button
+                key={p.id}
+                onClick={() => onAddProduct(p)}
+                disabled={!hasStock}
+                className={`border rounded p-2 text-left text-sm ${hasStock
+                    ? 'hover:bg-blue-50 cursor-pointer'
+                    : 'opacity-50 cursor-not-allowed bg-gray-100'
+                  }`}
+              >
+                <div className="font-semibold truncate">{p.name}</div>
+                <div className="flex justify-between items-center">
+                  <span className="text-blue-600 font-bold">
+                    Rs {displayPrice.toFixed(2)}
+                  </span>
+                  {p.hasMultipleProductPrices && (
+                    <span className="text-xs bg-purple-100 text-purple-600 px-1 rounded">
+                      Multiple
+                    </span>
+                  )}
+                </div>
+                {!hasStock && (
+                  <div className="text-xs text-red-600 font-semibold mt-1">
+                    Out of Stock
+                  </div>
+                )}
+                <div className="text-xs text-gray-500 mt-1">
+                  Stock: {p.stockQuantity}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Held Sales Bar */}

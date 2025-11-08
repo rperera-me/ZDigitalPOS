@@ -52,11 +52,13 @@ export default function GRNPage() {
                 if (res.data) {
                     setSelectedProductId(res.data.id.toString());
                     setBarcodeInput("");
-                    if (res.data.priceWholesale) {
-                        setWholesalePrice(res.data.priceWholesale.toString());
+
+                    // ✅ Use min prices from batch data if available
+                    if (res.data.minWholesalePrice) {
+                        setWholesalePrice(res.data.minWholesalePrice.toString());
                     }
-                    if (res.data.priceRetail) {
-                        setSellingPrice(res.data.priceRetail.toString());
+                    if (res.data.minSellingPrice) {
+                        setSellingPrice(res.data.minSellingPrice.toString());
                     }
                 } else {
                     alert("Product not found with this barcode");
@@ -414,8 +416,9 @@ export default function GRNPage() {
                                                 <th className="p-2 text-center font-semibold">Qty</th>
                                                 <th className="p-2 text-right font-semibold">Cost</th>
                                                 <th className="p-2 text-right font-semibold">MRP</th>
-                                                <th className="p-2 text-right font-semibold">Selling</th>
-                                                <th className="p-2 text-right font-semibold">Total</th>
+                                                <th className="p-2 text-right font-semibold">Retail</th>
+                                                <th className="p-2 text-right font-semibold">Wholesale</th>
+                                                <th className="p-2 text-right font-semibold">Total Cost</th>
                                                 <th className="p-2 text-center font-semibold">Action</th>
                                             </tr>
                                         </thead>
@@ -426,9 +429,16 @@ export default function GRNPage() {
                                                     <td className="p-2 font-mono text-xs">{item.batchNumber}</td>
                                                     <td className="p-2 text-center font-semibold">{item.quantity}</td>
                                                     <td className="p-2 text-right">Rs {item.costPrice.toFixed(2)}</td>
-                                                    <td className="p-2 text-right text-yellow-600 font-semibold">Rs {item.productPrice.toFixed(2)}</td>
-                                                    <td className="p-2 text-right">Rs {item.sellingPrice.toFixed(2)}</td>
-                                                    <td className="p-2 text-right font-semibold text-green-600">
+                                                    <td className="p-2 text-right text-yellow-600 font-semibold">
+                                                        Rs {item.productPrice.toFixed(2)}
+                                                    </td>
+                                                    <td className="p-2 text-right text-green-600">
+                                                        Rs {item.sellingPrice.toFixed(2)}
+                                                    </td>
+                                                    <td className="p-2 text-right text-purple-600">
+                                                        Rs {item.wholesalePrice.toFixed(2)}
+                                                    </td>
+                                                    <td className="p-2 text-right font-semibold text-orange-600">
                                                         Rs {(item.costPrice * item.quantity).toFixed(2)}
                                                     </td>
                                                     <td className="p-2 text-center">
@@ -442,8 +452,10 @@ export default function GRNPage() {
                                                 </tr>
                                             ))}
                                             <tr className="bg-blue-50 font-bold border-t-2">
-                                                <td colSpan="6" className="p-3 text-right text-lg">Total Amount:</td>
-                                                <td className="p-3 text-right text-lg text-blue-600">Rs {totalAmount.toFixed(2)}</td>
+                                                <td colSpan="7" className="p-3 text-right text-lg">Total Amount:</td>
+                                                <td className="p-3 text-right text-lg text-blue-600">
+                                                    Rs {totalAmount.toFixed(2)}
+                                                </td>
                                                 <td></td>
                                             </tr>
                                         </tbody>

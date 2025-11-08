@@ -6,11 +6,11 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
 
     if (!isOpen || !product || !priceVariants || priceVariants.length === 0) return null;
 
-    // Determine which price to display based on customer type
+    // ✅ Determine which price to display based on customer type
     const getPriceForCustomer = (variant) => {
         switch (customerType) {
             case "wholesale":
-                return variant.wholesalePrice;
+                return variant.wholesalePrice || variant.sellingPrice;
             case "retail":
             default:
                 return variant.sellingPrice;
@@ -85,9 +85,9 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-1">
-                                            {/* Product Price (Original) */}
+                                            {/* Product Price (MRP/Original) */}
                                             <div>
-                                                <div className="text-xs text-gray-500">Product Price</div>
+                                                <div className="text-xs text-gray-500">Product Price (MRP)</div>
                                                 <div className={`text-lg font-bold ${
                                                     discount > 0 ? 'line-through text-gray-400' : 'text-gray-800'
                                                 }`}>
@@ -98,7 +98,7 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
                                             {/* Display Price (Selling/Wholesale) */}
                                             <div>
                                                 <div className="text-xs text-gray-500">
-                                                    {customerType === "wholesale" ? "Wholesale Price" : "Selling Price"}
+                                                    {customerType === "wholesale" ? "Wholesale Price" : "Selling Price (Retail)"}
                                                 </div>
                                                 <div className="text-2xl font-bold text-green-600">
                                                     Rs {displayPrice.toFixed(2)}
@@ -124,13 +124,13 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
                                                 </span>
                                             </div>
 
-                                            {/* GRN References */}
+                                            {/* Source Count */}
                                             <div className="flex items-center gap-1">
                                                 <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
                                                 <span className="text-xs text-gray-500">
-                                                    {variant.sources.length} GRN(s)
+                                                    {variant.sources.length} source(s)
                                                 </span>
                                             </div>
                                         </div>
@@ -146,7 +146,7 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
                                     )}
                                 </div>
 
-                                {/* GRN Details (Expandable) */}
+                                {/* Source Details (Expandable) */}
                                 {selectedVariant === variant && (
                                     <div className="mt-3 pt-3 border-t border-gray-300">
                                         <div className="text-xs text-gray-600 font-semibold mb-2">Stock Sources:</div>
@@ -154,7 +154,9 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
                                             {variant.sources.map((source, idx) => (
                                                 <div key={idx} className="flex justify-between text-xs bg-white p-2 rounded border">
                                                     <span className="font-mono text-blue-600">{source.grnNumber}</span>
-                                                    <span className="text-gray-600">Batch: {source.batchNumber}</span>
+                                                    {source.sourceReference && (
+                                                        <span className="text-gray-600">Ref: {source.sourceReference}</span>
+                                                    )}
                                                     <span className="font-semibold">{source.stock} units</span>
                                                     <span className="text-gray-500">{new Date(source.receivedDate).toLocaleDateString()}</span>
                                                 </div>
