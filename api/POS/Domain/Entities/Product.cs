@@ -7,8 +7,6 @@
         public string Name { get; set; } = string.Empty;
         public int CategoryId { get; set; }
         public int? DefaultSupplierId { get; set; }
-        public decimal PriceRetail { get; set; }
-        public decimal PriceWholesale { get; set; }
         public int StockQuantity { get; set; }
         public bool HasMultipleProductPrices { get; set; } = false;
     }

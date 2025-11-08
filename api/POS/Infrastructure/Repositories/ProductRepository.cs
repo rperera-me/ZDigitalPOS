@@ -5,7 +5,6 @@ using PosSystem.Infrastructure.Context;
 
 namespace PosSystem.Infrastructure.Repositories
 {
-
     public class ProductRepository : IProductRepository
     {
         private readonly DapperContext _context;
@@ -17,10 +16,11 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product> AddAsync(Product product)
         {
+            // ✅ REMOVED: PriceRetail and PriceWholesale from insert
             var sql = @"INSERT INTO Products 
-                        (Barcode, Name, CategoryId, DefaultSupplierId, PriceRetail, PriceWholesale, StockQuantity)
+                        (Barcode, Name, CategoryId, DefaultSupplierId, StockQuantity, HasMultipleProductPrices)
                         VALUES 
-                        (@Barcode, @Name, @CategoryId, @DefaultSupplierId, @PriceRetail, @PriceWholesale, @StockQuantity);
+                        (@Barcode, @Name, @CategoryId, @DefaultSupplierId, @StockQuantity, @HasMultipleProductPrices);
                         SELECT CAST(SCOPE_IDENTITY() as int)";
 
             using var connection = _context.CreateConnection();
@@ -38,8 +38,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<IEnumerable<Product>> GetAllAsync()
         {
+            // ✅ REMOVED: PriceRetail and PriceWholesale from select
             var sql = @"SELECT Id, Barcode, Name, CategoryId, DefaultSupplierId, 
-                        PriceRetail, PriceWholesale, StockQuantity 
+                        StockQuantity, HasMultipleProductPrices 
                         FROM Products 
                         ORDER BY Name";
 
@@ -49,8 +50,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product?> GetByBarcodeAsync(string barcode)
         {
+            // ✅ REMOVED: PriceRetail and PriceWholesale from select
             var sql = @"SELECT Id, Barcode, Name, CategoryId, DefaultSupplierId, 
-                        PriceRetail, PriceWholesale, StockQuantity 
+                        StockQuantity, HasMultipleProductPrices 
                         FROM Products 
                         WHERE Barcode = @Barcode";
 
@@ -60,8 +62,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product?> GetByIdAsync(int id)
         {
+            // ✅ REMOVED: PriceRetail and PriceWholesale from select
             var sql = @"SELECT Id, Barcode, Name, CategoryId, DefaultSupplierId, 
-                        PriceRetail, PriceWholesale, StockQuantity 
+                        StockQuantity, HasMultipleProductPrices 
                         FROM Products 
                         WHERE Id = @Id";
 
@@ -71,8 +74,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<IEnumerable<Product>> GetByCategoryIdAsync(int categoryId)
         {
+            // ✅ REMOVED: PriceRetail and PriceWholesale from select
             var sql = @"SELECT Id, Barcode, Name, CategoryId, DefaultSupplierId, 
-                        PriceRetail, PriceWholesale, StockQuantity 
+                        StockQuantity, HasMultipleProductPrices 
                         FROM Products 
                         WHERE CategoryId = @CategoryId
                         ORDER BY Name";
@@ -83,14 +87,14 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product> UpdateAsync(Product product)
         {
+            // ✅ REMOVED: PriceRetail and PriceWholesale from update
             var sql = @"UPDATE Products 
                         SET Barcode = @Barcode, 
                             Name = @Name, 
                             CategoryId = @CategoryId,
                             DefaultSupplierId = @DefaultSupplierId,
-                            PriceRetail = @PriceRetail, 
-                            PriceWholesale = @PriceWholesale, 
-                            StockQuantity = @StockQuantity
+                            StockQuantity = @StockQuantity,
+                            HasMultipleProductPrices = @HasMultipleProductPrices
                         WHERE Id = @Id";
 
             using var connection = _context.CreateConnection();
@@ -100,8 +104,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<int> productIds)
         {
+            // ✅ REMOVED: PriceRetail and PriceWholesale from select
             var sql = @"SELECT Id, Barcode, Name, CategoryId, DefaultSupplierId, 
-                        PriceRetail, PriceWholesale, StockQuantity 
+                        StockQuantity, HasMultipleProductPrices 
                         FROM Products 
                         WHERE Id IN @Ids";
 

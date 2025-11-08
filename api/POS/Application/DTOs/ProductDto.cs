@@ -11,13 +11,22 @@ namespace PosSystem.Application.DTOs
         public string CategoryName { get; set; } = string.Empty;
         public int? DefaultSupplierId { get; set; }
         public string? DefaultSupplierName { get; set; }
-        public decimal PriceRetail { get; set; }
-        public decimal PriceWholesale { get; set; }
-        public int StockQuantity { get; set; }
 
-        // ✅ CHANGED: Remove batch-related properties
+        // ✅ NEW: Price ranges from batches
+        public decimal? MinCostPrice { get; set; }
+        public decimal? MaxCostPrice { get; set; }
+        public decimal? MinProductPrice { get; set; }
+        public decimal? MaxProductPrice { get; set; }
+        public decimal? MinSellingPrice { get; set; }
+        public decimal? MaxSellingPrice { get; set; }
+        public decimal? MinWholesalePrice { get; set; }
+        public decimal? MaxWholesalePrice { get; set; }
+
+        public int StockQuantity { get; set; }
         public bool HasMultipleProductPrices { get; set; }
-        public List<ProductBatchDto>? PriceSources { get; set; } // Renamed from Batches
+
+        // ✅ Price sources (replaces Batches)
+        public List<ProductBatchDto>? PriceSources { get; set; }
     }
 
     public class ProductPriceVariantDto
@@ -33,8 +42,8 @@ namespace PosSystem.Application.DTOs
     {
         public int? GRNId { get; set; }
         public string GRNNumber { get; set; } = string.Empty;
-        public int SourceId { get; set; } // Changed from BatchId
-        public string? SourceReference { get; set; } // Changed from BatchNumber - can be null
+        public int SourceId { get; set; }
+        public string? SourceReference { get; set; }
         public int Stock { get; set; }
         public DateTime ReceivedDate { get; set; }
     }
