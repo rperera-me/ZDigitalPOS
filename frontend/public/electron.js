@@ -14,7 +14,7 @@ function createWindow() {
     resizable: false,       // Prevent window resize
     fullscreen: true,       // Fullscreen mode
     movable: false,         // Prevent moving window
-    skipTaskbar: true,      // Don't show in taskbar
+    skipTaskbar: false,      // Don't show in taskbar
     alwaysOnTop: false,      // Window always on top
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

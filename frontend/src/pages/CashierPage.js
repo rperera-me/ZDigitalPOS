@@ -625,7 +625,7 @@ export default function CashierPage() {
                   <svg className="w-5 h-5 text-gray-700 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-xs font-medium text-gray-700">Hold Sales</span>
+                  <span className="text-xs font-medium text-gray-700">Held Sales</span>
                 </button>
 
                 {/* Bill Reprint */}
