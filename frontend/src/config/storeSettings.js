@@ -1,7 +1,7 @@
 const storeSettings = {
-  storeName: "ABC Stores",
-  storeAddress: "123 Example Road, City",
-  storePhone: "0763082845",
+  storeName: "Retail Stores",
+  storeAddress: "Thihagoda, Matara",
+  storePhone: "0770123456",
   currency: "Rs",
   receiptLanguage: "si"
 };
