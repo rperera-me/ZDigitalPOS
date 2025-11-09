@@ -57,6 +57,7 @@ export default function CashierPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [priceVariants, setPriceVariants] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isHeldSalesModalOpen, setIsHeldSalesModalOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -615,19 +616,23 @@ export default function CashierPage() {
                   <span className="text-xs font-medium text-white">
                     ZDigital POS <br />
                     Version 1.0
-                    </span>
+                  </span>
                 </button>
                 {/* Hold Sales */}
                 <button
-                  onClick={() => {/* Show held sales modal */ }}
-                  className="flex flex-col items-center justify-center p-2 bg-gray-100 hover:bg-blue-100 rounded transition-colors"
+                  onClick={() => setIsHeldSalesModalOpen(true)}
+                  className="flex flex-col items-center justify-center p-2 bg-gray-100 hover:bg-blue-100 rounded transition-colors relative"
                 >
                   <svg className="w-5 h-5 text-gray-700 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="text-xs font-medium text-gray-700">Held Sales</span>
+                  {holdSales.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      {holdSales.length}
+                    </span>
+                  )}
                 </button>
-
                 {/* Bill Reprint */}
                 <button
                   onClick={handleReprintBill}
@@ -673,28 +678,6 @@ export default function CashierPage() {
                 </button>
               </div>
             </div>
-
-            {/* Held Sales List */}
-            {holdSales.length > 0 && (
-              <div className="border-t bg-yellow-50 p-2">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-xs font-semibold text-yellow-800">Held Sales ({holdSales.length})</h4>
-                </div>
-                <div className="flex gap-1 overflow-x-auto">
-                  {holdSales.map((sale) => (
-                    <button
-                      key={sale.id}
-                      onClick={() => resumeSale(sale)}
-                      className="flex-shrink-0 bg-white border border-yellow-400 rounded p-2 hover:bg-yellow-100 transition min-w-[100px]"
-                    >
-                      <div className="text-xs text-gray-600">{new Date(sale.saleDate).toLocaleTimeString()}</div>
-                      <div className="text-xs font-semibold">{sale.saleItems?.length || 0} items</div>
-                      <div className="text-blue-600 font-bold text-xs">Rs {sale.totalAmount.toFixed(2)}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1242,6 +1225,116 @@ export default function CashierPage() {
           </div>
         )
       }
+
+      {/* HELD SALES MODAL */}
+      {isHeldSalesModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Held Sales
+                <span className="ml-2 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                  {holdSales.length} {holdSales.length === 1 ? 'sale' : 'sales'}
+                </span>
+              </h3>
+              <button
+                onClick={() => setIsHeldSalesModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {holdSales.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-gray-500 mb-2">No held sales</p>
+                <p className="text-sm text-gray-400">Sales that are put on hold will appear here</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {holdSales.map((sale) => (
+                  <div
+                    key={sale.id}
+                    onClick={() => {
+                      resumeSale(sale);
+                      setIsHeldSalesModalOpen(false);
+                    }}
+                    className="border-2 border-yellow-400 rounded-lg p-4 hover:bg-yellow-50 transition cursor-pointer hover:shadow-lg"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Sale ID</div>
+                        <div className="text-lg font-bold text-gray-800">#{sale.id}</div>
+                      </div>
+                      <div className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold">
+                        On Hold
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Time:</span>
+                        <span className="font-semibold">{new Date(sale.saleDate).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Items:</span>
+                        <span className="font-semibold">{sale.saleItems?.length || 0} items</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Qty:</span>
+                        <span className="font-semibold">
+                          {sale.saleItems?.reduce((sum, item) => sum + item.quantity, 0) || 0} units
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-yellow-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700">Total Amount:</span>
+                        <span className="text-xl font-bold text-blue-600">
+                          Rs {sale.totalAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-yellow-200">
+                      <div className="text-xs text-gray-500 mb-2">Items Preview:</div>
+                      <div className="space-y-1">
+                        {sale.saleItems?.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-xs">
+                            <span className="truncate flex-1">{item.productName}</span>
+                            <span className="font-semibold ml-2">×{item.quantity}</span>
+                          </div>
+                        ))}
+                        {sale.saleItems?.length > 3 && (
+                          <div className="text-xs text-gray-500 italic">
+                            +{sale.saleItems.length - 3} more items...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <button className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Resume Sale
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <PriceSelectionModal
         isOpen={showPriceModal}
