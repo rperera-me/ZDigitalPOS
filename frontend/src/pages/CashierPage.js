@@ -454,7 +454,7 @@ export default function CashierPage() {
     setIsLastSaleModalOpen(false);
     alert("Last sale loaded into current sale.");
   }
-  
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -500,6 +500,19 @@ export default function CashierPage() {
       api.get("/product").then((res) => dispatch(setProducts(res.data)));
     }
   }, [selectedCategoryId, dispatch]);
+
+  useEffect(() => {
+    const handleOpenCustomerModal = () => {
+      setCustomerType('loyalty'); // Or 'wholesale' based on your preference
+      setIsCustomerModalOpen(true);
+    };
+
+    window.addEventListener('openCustomerModal', handleOpenCustomerModal);
+
+    return () => {
+      window.removeEventListener('openCustomerModal', handleOpenCustomerModal);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100">
