@@ -59,6 +59,7 @@ export default function CashierPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [priceVariants, setPriceVariants] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState("");
   const [isHeldSalesModalOpen, setIsHeldSalesModalOpen] = useState(false);
 
   const handleLogout = () => {
@@ -456,6 +457,16 @@ export default function CashierPage() {
   }
 
   useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      setCurrentTime(now);
+
+      // Format: Monday, 10 November 2025
+      const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+      setCurrentDate(now.toLocaleDateString('en-GB', options));
+    };
+
+    updateDateTime(); // Initial call
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -533,13 +544,15 @@ export default function CashierPage() {
               </div>
             </div>
 
-            {/* Center - Time Display */}
-            <div className="hidden md:flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-1 border border-white/20">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Center - Date & Time Display */}
+            <div className="hidden md:flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-white font-bold tabular-nums">
-                {currentTime.toLocaleTimeString()}
+              <div className="flex items-center gap-3 text-white">
+                <span className="text-sm font-medium">{currentDate}</span>
+                <span className="text-white/40">|</span>
+                <span className="text-sm font-bold tabular-nums">{currentTime.toLocaleTimeString()}</span>
               </div>
             </div>
 

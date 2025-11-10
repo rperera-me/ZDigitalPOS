@@ -7,6 +7,7 @@ export default function PaymentModal({
   getTotalAmount,
   customers,
   currentCustomer,
+  customerType = "walk-in"
 }) {
   // Payment method states
   const [cashAmount, setCashAmount] = useState("");
@@ -21,7 +22,7 @@ export default function PaymentModal({
 
   const [activeTab, setActiveTab] = useState('cash');
 
-  // ✅ Memoize calculations to prevent unnecessary re-renders
+  // Calculate discount amount
   const discountAmount = useMemo(() => {
     const total = getTotalAmount();
     if (!discountValue || isNaN(discountValue)) return 0;
@@ -33,11 +34,12 @@ export default function PaymentModal({
     }
   }, [discountType, discountValue, getTotalAmount]);
 
+  // Calculate total after discount
   const totalAfterDiscount = useMemo(() => {
     return getTotalAmount() - discountAmount;
   }, [getTotalAmount, discountAmount]);
 
-  // ✅ Memoize payment calculations
+  // Calculate payment totals
   const { cashPaid, cardPaid, creditPaid, totalPaid, balance } = useMemo(() => {
     const cash = parseFloat(cashAmount) || 0;
     const card = parseFloat(cardAmount) || 0;
@@ -54,20 +56,22 @@ export default function PaymentModal({
     };
   }, [cashAmount, cardAmount, creditAmount, totalAfterDiscount]);
 
-  // Auto-calculate credit amount - use useCallback to prevent re-creation
+  // Auto-calculate credit amount when credit tab is active and customer is selected
   useEffect(() => {
-    const remaining = totalAfterDiscount - cashPaid - cardPaid;
-    if (remaining > 0 && activeTab === 'credit') {
-      setCreditAmount(remaining.toFixed(2));
+    if (activeTab === 'credit' && creditCustomer) {
+      const remaining = totalAfterDiscount - cashPaid - cardPaid;
+      if (remaining > 0) {
+        setCreditAmount(remaining.toFixed(2));
+      }
     }
-  }, [totalAfterDiscount, cashPaid, cardPaid, activeTab]);
+  }, [activeTab, creditCustomer, totalAfterDiscount, cashPaid, cardPaid]);
 
-  // Sync credit customer with current customer
+  // Sync credit customer with current customer from sale
   useEffect(() => {
-    if (currentCustomer) {
+    if (currentCustomer && (customerType === "loyalty" || customerType === "wholesale")) {
       setCreditCustomer(currentCustomer);
     }
-  }, [currentCustomer]);
+  }, [currentCustomer, customerType]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -76,14 +80,14 @@ export default function PaymentModal({
       setCardAmount("");
       setCardLastFour("");
       setCreditAmount("");
-      setCreditCustomer(currentCustomer);
+      setCreditCustomer(currentCustomer || null);
       setDiscountType("percentage");
       setDiscountValue("");
       setActiveTab('cash');
     }
   }, [isOpen, currentCustomer]);
 
-  // ✅ Use useCallback for event handlers to prevent re-creation
+  // Event handlers
   const handleCashChange = useCallback((e) => {
     setCashAmount(e.target.value);
   }, []);
@@ -96,20 +100,20 @@ export default function PaymentModal({
     setCardLastFour(e.target.value.replace(/\D/g, ''));
   }, []);
 
-  const handleCreditAmountChange = useCallback((e) => {
-    setCreditAmount(e.target.value);
-  }, []);
-
-  const handleDiscountValueChange = useCallback((e) => {
-    setDiscountValue(e.target.value);
-  }, []);
-
   const handleCreditCustomerChange = useCallback((e) => {
     const customer = customers.find((c) => c.id === parseInt(e.target.value));
     setCreditCustomer(customer || null);
   }, [customers]);
 
-  // ✅ Add check to prevent rendering when closed
+  const handleDiscountValueChange = useCallback((e) => {
+    setDiscountValue(e.target.value);
+  }, []);
+
+  const handleQuickCash = useCallback((amount) => {
+    const currentAmount = parseFloat(cashAmount) || 0;
+    setCashAmount((currentAmount + amount).toString());
+  }, [cashAmount]);
+
   if (!isOpen) return null;
 
   const handlePay = () => {
@@ -155,18 +159,25 @@ export default function PaymentModal({
     onClose();
   };
 
+  // Filter customers by type
+  const filteredCustomers = customers.filter(c => {
+    if (customerType === "loyalty") return c.type === "loyalty";
+    if (customerType === "wholesale") return c.type === "wholesale";
+    return false;
+  });
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[95vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 pb-4 flex-shrink-0 border-b border-gray-200">
-          <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-700">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             Payment Processing
           </h3>
-          <button onClick={onClose} type="button" className="text-gray-500 hover:text-gray-700 transition">
+          <button onClick={onClose} type="button" className="text-white hover:text-gray-700 transition">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -174,216 +185,251 @@ export default function PaymentModal({
         </div>
 
         {/* Amount Summary */}
-        <div className="flex-shrink-0 px-6 pt-4 pb-3 bg-white border-b-2 border-gray-200">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-lg p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-700 font-medium">Subtotal:</span>
-              <span className="text-xl font-bold text-gray-800">Rs {getTotalAmount().toFixed(2)}</span>
-            </div>
-            {discountAmount > 0 && (
-              <div className="flex justify-between items-center text-sm text-red-600 mb-2">
-                <span>Discount ({discountType === "percentage" ? `${discountValue}%` : `Rs ${discountValue}`}):</span>
-                <span className="font-semibold">- Rs {discountAmount.toFixed(2)}</span>
+        <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
+          <div className="flex justify-between items-center">
+            {discountAmount > 0 ? (
+              // Show Subtotal and Discount when discount is applied
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-xs text-gray-600">Subtotal</div>
+                  <div className="text-lg font-semibold text-gray-700">Rs {getTotalAmount().toFixed(2)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-600">Discount</div>
+                  <div className="text-lg font-semibold text-red-600">- Rs {discountAmount.toFixed(2)}</div>
+                </div>
               </div>
+            ) : (
+              // Empty div to maintain layout when no discount
+              <div></div>
             )}
-            <div className="flex justify-between items-center pt-2 border-t border-blue-300">
-              <span className="text-gray-700 font-semibold text-lg">Total Payable:</span>
-              <span className="text-2xl font-bold text-blue-600">Rs {totalAfterDiscount.toFixed(2)}</span>
+            <div className="text-right">
+              <div className="text-xs text-gray-600">Total Payable</div>
+              <div className="text-2xl font-bold text-blue-600">Rs {totalAfterDiscount.toFixed(2)}</div>
             </div>
           </div>
         </div>
 
-        {/* ✅ Scrollable Content Area with Tabs */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Tab Navigation */}
-          <div className="border-b-2 border-gray-200 px-6 pt-4">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab('cash')}
-                className={`px-4 py-2 font-semibold rounded-t-lg transition ${activeTab === 'cash'
-                    ? 'bg-green-100 text-green-700 border-2 border-b-0 border-green-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-              >
-                Cash Payment
-              </button>
-              <button
-                onClick={() => setActiveTab('card')}
-                className={`px-4 py-2 font-semibold rounded-t-lg transition ${activeTab === 'card'
-                    ? 'bg-blue-100 text-blue-700 border-2 border-b-0 border-blue-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-              >
-                Card Payment
-              </button>
-              <button
-                onClick={() => setActiveTab('credit')}
-                className={`px-4 py-2 font-semibold rounded-t-lg transition ${activeTab === 'credit'
-                    ? 'bg-orange-100 text-orange-700 border-2 border-b-0 border-orange-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-              >
-                Credit Payment
-              </button>
-              <button
-                onClick={() => setActiveTab('discount')}
-                className={`px-4 py-2 font-semibold rounded-t-lg transition ${activeTab === 'discount'
-                    ? 'bg-purple-100 text-purple-700 border-2 border-b-0 border-purple-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-              >
-                Discount
-              </button>
-            </div>
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 bg-white">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('cash')}
+              className={`flex-1 px-3 py-2 font-semibold text-sm transition ${activeTab === 'cash'
+                ? 'bg-green-100 text-green-700 border-b-2 border-green-500'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
+            >
+              💵 Cash
+            </button>
+            <button
+              onClick={() => setActiveTab('card')}
+              className={`flex-1 px-3 py-2 font-semibold text-sm transition ${activeTab === 'card'
+                ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
+            >
+              💳 Card
+            </button>
+            <button
+              onClick={() => setActiveTab('credit')}
+              className={`flex-1 px-3 py-2 font-semibold text-sm transition ${activeTab === 'credit'
+                ? 'bg-orange-100 text-orange-700 border-b-2 border-orange-500'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
+            >
+              📋 Credit
+            </button>
+            <button
+              onClick={() => setActiveTab('discount')}
+              className={`flex-1 px-3 py-2 font-semibold text-sm transition ${activeTab === 'discount'
+                ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-500'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
+            >
+              🏷️ Discount
+            </button>
           </div>
+        </div>
 
-          {/* Tab Content */}
-          <div className="px-6 py-4">
-            {/* Cash Tab */}
-            {activeTab === 'cash' && (
-              <div className="space-y-3">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={cashAmount}
-                  onChange={handleCashChange}
-                  className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-green-500"
-                  placeholder="Enter cash amount"
-                  autoComplete="off"
-                />
-                {cashPaid > 0 && (
-                  <div className={`p-3 rounded-lg border-2 ${balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">Change:</span>
-                      <span className={`text-xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        Rs {Math.max(0, balance).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                )}
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Cash Tab */}
+          {activeTab === 'cash' && (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">Cash Amount</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={cashAmount}
+                onChange={handleCashChange}
+                className="w-full border-2 border-gray-300 rounded-lg p-3 text-lg focus:outline-none focus:border-green-500"
+                placeholder="Enter cash amount"
+                autoComplete="off"
+                autoFocus
+              />
+              {/* Quick Cash Amount Tiles */}
+              <div className="grid grid-cols-5 gap-2">
+                {[50, 100, 500, 1000, 5000].map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    onClick={() => handleQuickCash(amount)}
+                    className="bg-white hover:bg-green-200 text-green-700 font-semibold py-2 px-1 rounded-lg border-2 border-green-300 transition active:scale-95"
+                  >
+                    +{amount}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Card Tab */}
-            {activeTab === 'card' && (
-              <div className="space-y-3">
+          {/* Card Tab */}
+          {activeTab === 'card' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last 4 Digits of Card</label>
                 <input
                   type="text"
                   maxLength="4"
                   value={cardLastFour}
                   onChange={handleCardLastFourChange}
                   className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-blue-500"
-                  placeholder="Last 4 digits"
+                  placeholder="****"
                   autoComplete="off"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Card Amount</label>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
                   value={cardAmount}
                   onChange={handleCardAmountChange}
-                  className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-blue-500"
+                  className="w-full border-2 border-gray-300 rounded-lg p-3 text-lg focus:outline-none focus:border-blue-500"
                   placeholder="Enter card amount"
                   autoComplete="off"
                 />
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Credit Tab */}
-            {activeTab === 'credit' && (
-              <div className="space-y-3">
-                {!currentCustomer ? (
-                  <div className="space-y-3">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                      <p className="font-medium mb-2">No customer selected</p>
-                      <p>To use credit payment, please add or select a customer.</p>
-                    </div>
+          {/* Credit Tab */}
+          {activeTab === 'credit' && (
+            <div className="space-y-3">
+              {customerType === "walk-in" ? (
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 text-center">
+                  <svg className="w-12 h-12 mx-auto text-yellow-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <p className="text-yellow-800 font-medium">Credit payment not available for walk-in customers</p>
+                  <p className="text-yellow-600 text-sm mt-1">Please select Loyalty or Wholesale customer type in the sale screen</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select {customerType === "loyalty" ? "Loyalty" : "Wholesale"} Customer
+                    </label>
                     <select
                       value={creditCustomer?.id || ""}
                       onChange={handleCreditCustomerChange}
                       className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-orange-500"
                     >
                       <option value="">-- Select Customer --</option>
-                      {customers.map((cust) => (
+                      {filteredCustomers.map((cust) => (
                         <option key={cust.id} value={cust.id}>
-                          {cust.name} - Credit: Rs {cust.creditBalance?.toFixed(2) || "0.00"}
+                          {cust.name} - {cust.phone}
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        window.dispatchEvent(new CustomEvent('openCustomerModal'));
-                      }}
-                      className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg hover:from-green-700 hover:to-green-800 transition font-semibold flex items-center justify-center gap-2 shadow-md"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Add New Customer
-                    </button>
                   </div>
-                ) : (
-                  <>
-                    <select
-                      value={creditCustomer?.id || ""}
-                      onChange={handleCreditCustomerChange}
-                      className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-orange-500"
-                    >
-                      <option value="">-- Select Customer --</option>
-                      {customers.map((cust) => (
-                        <option key={cust.id} value={cust.id}>
-                          {cust.name} - Credit: Rs {cust.creditBalance?.toFixed(2) || "0.00"}
-                        </option>
-                      ))}
-                    </select>
 
-                    {creditCustomer && (
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                        <div className="text-sm space-y-1">
+                  {creditCustomer && (
+                    <>
+                      {/* Customer Summary */}
+                      <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-200 rounded-lg p-3">
+                        <h4 className="font-semibold text-orange-900 mb-2 text-sm">Customer Summary</h4>
+                        <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-gray-700">Customer:</span>
-                            <span className="font-semibold">{creditCustomer.name}</span>
+                            <span className="text-gray-700">Name:</span>
+                            <span className="font-semibold text-gray-900">{creditCustomer.name}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-700">Existing Credit:</span>
-                            <span className="font-semibold text-orange-600">
-                              Rs {creditCustomer.creditBalance?.toFixed(2) || "0.00"}
+                            <span className="text-gray-700">Phone:</span>
+                            <span className="font-semibold text-gray-900">{creditCustomer.phone}</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t border-orange-300">
+                            <span className="text-gray-700">Current Credit Balance:</span>
+                            <span className="font-bold text-orange-600">
+                              Rs {(creditCustomer.creditBalance || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          {customerType === "loyalty" && creditCustomer.loyaltyPoints !== undefined && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Loyalty Points:</span>
+                              <span className="font-bold text-purple-600">{creditCustomer.loyaltyPoints || 0}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Credit Amount */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Credit Amount</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={creditAmount}
+                          readOnly
+                          className="w-full border-2 border-orange-300 rounded-lg p-3 text-lg bg-orange-50 font-bold text-orange-600"
+                          placeholder="Auto-calculated"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          * Credit amount is automatically calculated based on remaining payment
+                        </p>
+                      </div>
+
+                      {/* New Balance Preview */}
+                      {creditPaid > 0 && (
+                        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-700">New Credit Balance:</span>
+                            <span className="text-lg font-bold text-red-600">
+                              Rs {((creditCustomer.creditBalance || 0) + creditPaid).toFixed(2)}
                             </span>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </>
+                  )}
 
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={creditAmount}
-                      onChange={handleCreditAmountChange}
-                      className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-orange-500 bg-orange-50"
-                      placeholder="Credit amount (auto-calculated)"
-                      readOnly
-                    />
-                  </>
-                )}
-              </div>
-            )}
+                  {!creditCustomer && (
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center">
+                      <p className="text-blue-800 font-medium">Please select a customer to use credit payment</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
-            {/* Discount Tab */}
-            {activeTab === 'discount' && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+          {/* Discount Tab */}
+          {activeTab === 'discount' && (
+            <div className="space-y-3">
+              <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
+                <label className="block text-sm font-medium text-purple-900 mb-3">Apply Discount</label>
                 <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Discount:</label>
                   <select
                     value={discountType}
                     onChange={(e) => setDiscountType(e.target.value)}
-                    className="border rounded px-2 py-1 text-sm"
+                    className="border-2 border-purple-300 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
                   >
-                    <option value="percentage">%</option>
-                    <option value="amount">Rs</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="amount">Amount (Rs)</option>
                   </select>
                   <input
                     type="number"
@@ -391,94 +437,101 @@ export default function PaymentModal({
                     step="0.01"
                     value={discountValue}
                     onChange={handleDiscountValueChange}
-                    className="flex-1 border rounded px-2 py-1 text-sm"
+                    className="flex-1 border-2 border-purple-300 rounded-lg px-3 py-2 text-lg focus:outline-none focus:border-purple-500"
                     placeholder={discountType === "percentage" ? "Enter %" : "Enter amount"}
                   />
-                  {discountAmount > 0 && (
-                    <span className="text-sm font-semibold text-purple-600 whitespace-nowrap">
-                      - Rs {discountAmount.toFixed(2)}
-                    </span>
-                  )}
                 </div>
+                {discountAmount > 0 && (
+                  <div className="mt-3 p-2 bg-purple-100 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-purple-900">Discount Applied:</span>
+                      <span className="text-lg font-bold text-purple-600">- Rs {discountAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Payment Summary */}
-          <div className="px-6 pb-4">
-            <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-3">
-              <h4 className="font-semibold text-gray-700 mb-2">Payment Summary</h4>
-              <div className="space-y-1 text-sm">
+          <div className="mt-4 bg-gray-50 border-2 border-gray-200 rounded-lg p-3">
+            <h4 className="font-semibold text-gray-700 mb-2 text-sm">Payment Summary</h4>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Payable:</span>
+                <span className="font-semibold">Rs {totalAfterDiscount.toFixed(2)}</span>
+              </div>
+              {cashPaid > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Payable:</span>
-                  <span className="font-semibold">Rs {totalAfterDiscount.toFixed(2)}</span>
+                  <span className="text-gray-600">Cash:</span>
+                  <span className="font-semibold text-green-600">Rs {cashPaid.toFixed(2)}</span>
                 </div>
-                {cashPaid > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Cash Amount:</span>
-                    <span className="font-semibold text-green-600">Rs {cashPaid.toFixed(2)}</span>
-                  </div>
-                )}
-                {cardPaid > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Card Amount:</span>
-                    <span className="font-semibold text-blue-600">Rs {cardPaid.toFixed(2)}</span>
-                  </div>
-                )}
-                {creditPaid > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Credit Amount:</span>
-                    <span className="font-semibold text-orange-600">Rs {creditPaid.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-2 border-t border-gray-300">
-                  <span className="text-gray-600">Total Paid:</span>
-                  <span className="font-semibold">Rs {totalPaid.toFixed(2)}</span>
+              )}
+              {cardPaid > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Card:</span>
+                  <span className="font-semibold text-blue-600">Rs {cardPaid.toFixed(2)}</span>
                 </div>
+              )}
+              {creditPaid > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Credit:</span>
+                  <span className="font-semibold text-orange-600">Rs {creditPaid.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t border-gray-300 font-bold">
+                <span className="text-gray-700">Total Paid:</span>
+                <span className={totalPaid >= totalAfterDiscount ? 'text-green-600' : 'text-red-600'}>
+                  Rs {totalPaid.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ✅ Fixed Action Buttons with Balance - stays at bottom */}
-        <div className="flex-shrink-0 border-t-2 border-gray-200 bg-white">
+        {/* Footer with Balance and Action Buttons */}
+        <div className="border-t-2 border-gray-200 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 p-4">
           {/* Balance Display */}
-          <div className="px-6 pt-3 pb-2">
-            <div className={`rounded-lg p-3 ${totalPaid >= totalAfterDiscount ? 'bg-green-50 border-2 border-green-300' : 'bg-red-50 border-2 border-red-300'}`}>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-700 text-lg">
-                  {totalPaid >= totalAfterDiscount ? 'Balance/Change:' : 'Remaining:'}
-                </span>
-                <span className={`text-2xl font-bold ${totalPaid >= totalAfterDiscount ? 'text-green-600' : 'text-red-600'}`}>
-                  {totalPaid < totalAfterDiscount && "-"}
-                  Rs {Math.abs(totalPaid - totalAfterDiscount).toFixed(2)}
-                </span>
-              </div>
+          <div className={`rounded-lg p-3 mb-3 border-2 ${totalPaid >= totalAfterDiscount
+            ? 'bg-white border-green-600'
+            : 'bg-white border-red-600'
+            }`}>
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-gray-700">
+                {totalPaid >= totalAfterDiscount ? 'Change:' : 'Remaining:'}
+              </span>
+              <span className={`text-2xl font-bold ${totalPaid >= totalAfterDiscount ? 'text-green-600' : 'text-red-600'
+                }`}>
+                {totalPaid < totalAfterDiscount && "-"}
+                Rs {Math.abs(totalPaid - totalAfterDiscount).toFixed(2)}
+              </span>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="px-6 pb-4">
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handlePay}
-                disabled={totalPaid < totalAfterDiscount || (cardPaid > 0 && cardLastFour.length !== 4) || (creditPaid > 0 && !creditCustomer)}
-                className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Complete Payment
-              </button>
-            </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-400 transition font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={
+                totalPaid < totalAfterDiscount ||
+                (cardPaid > 0 && cardLastFour.length !== 4) ||
+                (creditPaid > 0 && !creditCustomer)
+              }
+              className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Complete Payment
+            </button>
           </div>
         </div>
       </div>
