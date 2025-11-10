@@ -33,15 +33,26 @@ export const receiptTemplate = `
 
   <hr class="divider"/>
 
-  <div class="total-section">
-    <p class="total"><strong>{{i18n "total"}}:</strong> {{totalAmount}}</p>
-  </div>
+  {{#if discountAmount}}
+<div class="discount-section">
+  <p><strong>Discount:</strong> {{discountType}} {{discountValue}}</p>
+  <p><strong>Discount Amount:</strong> Rs {{discountAmount}}</p>
+</div>
+{{/if}}
 
-  <div class="payment-info">
-    <p><strong>{{i18n "paymentType"}}:</strong> {{paymentType}}</p>
-    <p><strong>{{i18n "amountPaid"}}:</strong> {{amountPaid}}</p>
-    <p><strong>{{i18n "change"}}:</strong> {{change}}</p>
-  </div>
+<div class="total-section">
+  <p class="total"><strong>Final Total:</strong> {{finalAmount}}</p>
+</div>
+
+<div class="payment-info">
+  <p><strong>Payment Methods:</strong></p>
+  {{#each payments}}
+  <p>{{paymentType}}: Rs {{amount}}{{#if cardLastFour}} (****{{cardLastFour}}){{/if}}</p>
+  {{/each}}
+  {{#if change}}
+  <p><strong>Change:</strong> Rs {{change}}</p>
+  {{/if}}
+</div>
 
   <div class="thank-you">
     <p>{{i18n "thankYou"}}</p>

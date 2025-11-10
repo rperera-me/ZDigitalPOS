@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from "react";
+import React, { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
 import {
@@ -11,8 +11,6 @@ import {
   setHoldSales,
   setCustomers,
   setCustomer,
-  setPaymentMethod,
-  setCashGiven,
   setCategoryId,
 } from "../app/posSlice";
 import { useTranslation } from "react-i18next";
@@ -40,8 +38,6 @@ export default function CashierPage() {
   const holdSales = useSelector((state) => state.pos.holdSales);
   const customers = useSelector((state) => state.pos.customers);
   const currentCustomer = useSelector((state) => state.pos.currentCustomer);
-  const paymentMethod = useSelector((state) => state.pos.paymentMethod);
-  const cashGiven = useSelector((state) => state.pos.cashGiven);
   const selectedCategoryId = useSelector((state) => state.pos.selectedCategoryId);
   const user = useSelector((state) => state.auth.user);
 
@@ -54,9 +50,9 @@ export default function CashierPage() {
 
   const [customerType, setCustomerType] = useState("walk-in"); // walk-in, loyalty, wholesale
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [isLastSaleModalOpen, setIsLastSaleModalOpen] = useState(false);
   const [lastSale, setLastSale] = useState(null);
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [barcodeQuantity, setBarcodeQuantity] = useState(1);
 
   const [showPriceModal, setShowPriceModal] = useState(false);
@@ -93,55 +89,6 @@ export default function CashierPage() {
   const getTotalItems = () =>
     saleItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const balance = (parseFloat(cashGiven) || 0) - getTotalAmount();
-
-  // Time update
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Barcode scanner listener
-  useEffect(() => {
-    let buffer = "";
-    let timer = null;
-    function onKeyDown(e) {
-      if (timer) clearTimeout(timer);
-      if (e.key === "Enter") {
-        if (buffer.length > 0) {
-          handleBarcodeAdd(buffer);
-          buffer = "";
-        }
-      } else {
-        buffer += e.key;
-        timer = setTimeout(() => (buffer = ""), 100);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  // Initial data fetch - Set "All" as default
-  useEffect(() => {
-    api.get("/category").then((res) => {
-      dispatch(setCategories(res.data));
-      dispatch(setCategoryId(null)); // Set to null for "All Products"
-    });
-    api.get("/customer").then((res) => dispatch(setCustomers(res.data)));
-    fetchHoldSales();
-  }, [dispatch]);
-
-  // Fetch products when category changes
-  useEffect(() => {
-    if (selectedCategoryId) {
-      api.get(`/product/category/${selectedCategoryId}`).then((res) =>
-        dispatch(setProducts(res.data))
-      );
-    } else {
-      api.get("/product").then((res) => dispatch(setProducts(res.data)));
-    }
-  }, [selectedCategoryId, dispatch]);
-
   // Offline sync functionality (commented for future use)
   // useEffect(() => {
   //   function syncOfflineSales() {
@@ -167,9 +114,9 @@ export default function CashierPage() {
     window.electronAPI.send("saveSale", salePayload);
   }
 
-  function fetchHoldSales() {
+  const fetchHoldSales = useCallback(() => {
     api.get("/sale/held").then((res) => dispatch(setHoldSales(res.data)));
-  }
+  }, [dispatch]);
 
   function addToCart(product, price, quantity, sourceId = null) {
     console.log("🛒 Adding to cart:", {
@@ -267,7 +214,7 @@ export default function CashierPage() {
     dispatch(updateQuantity({ productId, sourceId, price, quantity }));
   }
 
-  function handleBarcodeAdd(barcode) {
+  const handleBarcodeAdd = useCallback((barcode) => {
     const code = barcode || barcodeInput.trim();
     if (!code) return;
 
@@ -280,12 +227,9 @@ export default function CashierPage() {
           console.log("✅ Product found:", res.data.name);
           console.log("📊 HasMultipleProductPrices:", res.data.hasMultipleProductPrices);
 
-          // Check for multiple prices (not batches)
           if (res.data.hasMultipleProductPrices) {
-            // Will trigger price selection modal
             onAddProduct(res.data);
           } else {
-            // Use min prices directly
             const price = customerType === "wholesale"
               ? (res.data.minWholesalePrice || res.data.minSellingPrice || 0)
               : (res.data.minSellingPrice || 0);
@@ -305,7 +249,7 @@ export default function CashierPage() {
         }
       })
       .catch(() => alert("Product not found."));
-  }
+  }, [barcodeInput, barcodeQuantity, customerType]);
 
   function holdSale() {
     if (saleItems.length === 0) return alert("No items in sale.");
@@ -364,46 +308,72 @@ export default function CashierPage() {
     setIsPaymentOpen(true);
   }
 
-  function onPay() {
-    if (paymentMethod === "Cash" && balance < 0) {
-      return alert("Insufficient cash.");
-    }
+  function onPay(paymentData) {
     const salePayload = {
       cashierId: user?.id || 1,
-      customerId: currentCustomer?.id || null,
-      saleItems: saleItems.map(({ productId, name, price, quantity }) => ({
+      customerId: paymentData.customer?.id || null,
+      saleItems: saleItems.map(({ productId, name, price, quantity, sourceId }) => ({
         productId,
         name,
         price,
         quantity,
+        sourceId
       })),
-      totalAmount: getTotalAmount(),
+      totalAmount: paymentData.totalAmount,
+      discountType: paymentData.discountType,
+      discountValue: paymentData.discountValue,
+      discountAmount: paymentData.discountAmount,
+      finalAmount: paymentData.finalAmount,
       isHeld: false,
-      paymentType: paymentMethod,
-      amountPaid: paymentMethod === "Cash" ? parseFloat(cashGiven) : getTotalAmount(),
+      paymentType: paymentData.payments.length > 1 ? "Mixed" : paymentData.payments[0]?.type || "Cash",
+      payments: paymentData.payments, // Array of payment methods
+      amountPaid: paymentData.finalAmount,
+      change: paymentData.balance,
       date: new Date(),
-      change: parseFloat(cashGiven || 0) - getTotalAmount(),
     };
 
     if (isOnline()) {
-      api.post("/sale", salePayload).then(() => {
+      api.post("/sale", salePayload).then((response) => {
+        // Update customer credit if credit payment was made
+        if (paymentData.customer && paymentData.payments.some(p => p.type === "Credit")) {
+          const creditPayment = paymentData.payments.find(p => p.type === "Credit");
+          const newCreditBalance = (paymentData.customer.creditBalance || 0) + creditPayment.amount;
+
+          // Update customer credit balance
+          api.put(`/customer/${paymentData.customer.id}`, {
+            ...paymentData.customer,
+            creditBalance: newCreditBalance
+          });
+        }
+
+        // Show receipt
         i18n.changeLanguage(storeSetting.receiptLanguage || "en");
-        setReceiptData(salePayload);
+        setReceiptData({
+          ...salePayload,
+          storeName: storeSetting.storeName,
+          cashier: user?.username || "Cashier"
+        });
         setIsReceiptOpen(true);
         setIsPaymentOpen(false);
         dispatch(clearSale());
-        dispatch(setCashGiven(""));
         dispatch(setCustomer(null));
         fetchHoldSales();
+      }).catch((err) => {
+        console.error("Sale failed:", err);
+        alert("Failed to process sale: " + (err.response?.data?.message || err.message));
       });
     } else {
+      // Offline mode
       saveSaleOffline(salePayload);
       i18n.changeLanguage(storeSetting.receiptLanguage || "en");
-      setReceiptData(salePayload);
+      setReceiptData({
+        ...salePayload,
+        storeName: storeSetting.storeName,
+        cashier: user?.username || "Cashier"
+      });
       setIsReceiptOpen(true);
       setIsPaymentOpen(false);
       dispatch(clearSale());
-      dispatch(setCashGiven(""));
       dispatch(setCustomer(null));
       fetchHoldSales();
       alert("Sale saved offline, will sync when online.");
@@ -484,6 +454,52 @@ export default function CashierPage() {
     setIsLastSaleModalOpen(false);
     alert("Last sale loaded into current sale.");
   }
+  
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Barcode scanner listener
+  useEffect(() => {
+    let buffer = "";
+    let timer = null;
+    function onKeyDown(e) {
+      if (timer) clearTimeout(timer);
+      if (e.key === "Enter") {
+        if (buffer.length > 0) {
+          handleBarcodeAdd(buffer);
+          buffer = "";
+        }
+      } else {
+        buffer += e.key;
+        timer = setTimeout(() => (buffer = ""), 100);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleBarcodeAdd]);
+
+  // Initial data fetch - Set "All" as default
+  useEffect(() => {
+    api.get("/category").then((res) => {
+      dispatch(setCategories(res.data));
+      dispatch(setCategoryId(null));
+    });
+    api.get("/customer").then((res) => dispatch(setCustomers(res.data)));
+    fetchHoldSales();
+  }, [dispatch, fetchHoldSales]);
+
+  // Fetch products when category changes
+  useEffect(() => {
+    if (selectedCategoryId) {
+      api.get(`/product/category/${selectedCategoryId}`).then((res) =>
+        dispatch(setProducts(res.data))
+      );
+    } else {
+      api.get("/product").then((res) => dispatch(setProducts(res.data)));
+    }
+  }, [selectedCategoryId, dispatch]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -609,7 +625,6 @@ export default function CashierPage() {
               })}
             </div>
           </div>
-
 
           {/* BOTTOM NAVIGATION PANEL */}
           <div className="border-t bg-white shadow-lg">
@@ -931,15 +946,9 @@ export default function CashierPage() {
         isOpen={isPaymentOpen}
         onClose={() => setIsPaymentOpen(false)}
         onPay={onPay}
-        paymentMethod={paymentMethod}
-        setPaymentMethod={(method) => dispatch(setPaymentMethod(method))}
-        cashGiven={cashGiven}
-        setCashGiven={(amount) => dispatch(setCashGiven(amount))}
-        balance={balance}
         getTotalAmount={getTotalAmount}
         customers={customers}
         currentCustomer={currentCustomer}
-        setCustomer={(customer) => dispatch(setCustomer(customer))}
       />
 
       {/* RECEIPT MODAL */}

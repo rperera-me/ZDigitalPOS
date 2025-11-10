@@ -8,11 +8,9 @@ const initialState = {
   holdSales: [],
   customers: [],
   currentCustomer: null,
-  paymentMethod: "Cash",
-  cashGiven: "",
   selectedCategoryId: null,
-  selectedSource: null, // Changed from selectedBatch
-  showPriceModal: false, // Changed from showBatchModal
+  selectedSource: null,
+  showPriceModal: false,
   currentProduct: null,
 };
 
@@ -32,7 +30,6 @@ const posSlice = createSlice({
     addSaleItem: (state, action) => {
       const item = action.payload;
       
-      // ✅ NO BATCH LOGIC - Create unique key based on product and price only
       const itemKey = item.sourceId 
         ? `${item.productId}-${item.sourceId}` 
         : `${item.productId}-${item.price}`;
@@ -53,7 +50,6 @@ const posSlice = createSlice({
     removeSaleItem: (state, action) => {
       const { productId, sourceId, price } = action.payload;
       state.saleItems = state.saleItems.filter(i => {
-        // Match by source ID if provided, otherwise by price
         if (sourceId !== undefined && sourceId !== null) {
           return !(i.productId === productId && i.sourceId === sourceId);
         } else {
@@ -77,8 +73,6 @@ const posSlice = createSlice({
     clearSale: (state) => {
       state.saleItems = [];
       state.currentCustomer = null;
-      state.paymentMethod = "Cash";
-      state.cashGiven = "";
       state.selectedSource = null;
       state.showPriceModal = false;
       state.currentProduct = null;
@@ -91,12 +85,6 @@ const posSlice = createSlice({
     },
     setCustomer: (state, action) => {
       state.currentCustomer = action.payload;
-    },
-    setPaymentMethod: (state, action) => {
-      state.paymentMethod = action.payload;
-    },
-    setCashGiven: (state, action) => {
-      state.cashGiven = action.payload;
     },
     setCategoryId: (state, action) => {
       state.selectedCategoryId = action.payload;
@@ -124,8 +112,6 @@ export const {
   setHoldSales,
   setCustomers,
   setCustomer,
-  setPaymentMethod,
-  setCashGiven,
   setCategoryId,
   setShowPriceModal,
   setCurrentProduct,
