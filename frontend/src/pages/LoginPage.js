@@ -89,10 +89,6 @@ export default function LoginPage() {
         {/* Right Section - Login Form */}
         <div className="flex-1 flex flex-col justify-center p-12">
           <div className="w-full max-w-md mx-auto">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            </div>
-
             {error && (
               <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-center gap-3">
                 <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

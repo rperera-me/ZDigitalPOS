@@ -15,11 +15,17 @@ import {
   setCashGiven,
   setCategoryId,
 } from "../app/posSlice";
-import ReceiptModal from "../components/receipt/ReceiptPreviewModal";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import storeSetting from "../config/storeSettings";
-import PriceSelectionModal from "../components/PriceSelectionModal";
+import {
+  PaymentModal,
+  CustomerSelectionModal,
+  LastSaleModal,
+  HeldSalesModal,
+  PriceSelectionModal,
+  ReceiptModal
+} from "../components/modals";
 
 export default function CashierPage() {
   const dispatch = useDispatch();
@@ -921,84 +927,20 @@ export default function CashierPage() {
       </div>
 
       {/* PAYMENT MODAL */}
-      {
-        isPaymentOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-            <div className="bg-white rounded p-4 max-w-md w-full">
-              <h3 className="text-xl font-semibold mb-3">Payment</h3>
-
-              <label className="block mb-3">
-                <span className="text-sm font-medium">Payment Type</span>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => dispatch(setPaymentMethod(e.target.value))}
-                  className="w-full border rounded p-2 mt-1"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Card">Card</option>
-                  <option value="Credit">Credit</option>
-                </select>
-              </label>
-
-              {paymentMethod === "Cash" && (
-                <>
-                  <label className="block mb-3">
-                    <span className="text-sm font-medium">Cash Given</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={cashGiven}
-                      onChange={(e) => dispatch(setCashGiven(e.target.value))}
-                      className="w-full border rounded p-2 mt-1"
-                    />
-                  </label>
-                  <p className="text-right font-semibold mb-3">
-                    Balance: <span className={balance >= 0 ? "text-green-600" : "text-red-600"}>
-                      Rs {balance.toFixed(2)}
-                    </span>
-                  </p>
-                </>
-              )}
-
-              {(paymentMethod === "Credit" || paymentMethod === "Card") && (
-                <label className="block mb-3">
-                  <span className="text-sm font-medium">Select Customer</span>
-                  <select
-                    value={currentCustomer?.id || ""}
-                    onChange={(e) => {
-                      const sel = customers.find((c) => c.id === parseInt(e.target.value));
-                      dispatch(setCustomer(sel || null));
-                    }}
-                    className="w-full border rounded p-2 mt-1"
-                  >
-                    <option value="">-- Select Customer --</option>
-                    {customers.map((cust) => (
-                      <option key={cust.id} value={cust.id}>
-                        {cust.name} - Credit: Rs {cust.creditBalance?.toFixed(2) || "0.00"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setIsPaymentOpen(false)}
-                  className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={onPay}
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                >
-                  Pay
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      }
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        onPay={onPay}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={(method) => dispatch(setPaymentMethod(method))}
+        cashGiven={cashGiven}
+        setCashGiven={(amount) => dispatch(setCashGiven(amount))}
+        balance={balance}
+        getTotalAmount={getTotalAmount}
+        customers={customers}
+        currentCustomer={currentCustomer}
+        setCustomer={(customer) => dispatch(setCustomer(customer))}
+      />
 
       {/* RECEIPT MODAL */}
       <ReceiptModal
@@ -1009,332 +951,42 @@ export default function CashierPage() {
       />
 
       {/* CUSTOMER SELECTION MODAL */}
-      {
-        isCustomerModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">
-                  Manage {customerType === "loyalty" ? "Loyalty" : customerType === "wholesale" ? "Wholesale" : ""} Customer
-                </h3>
-                <button
-                  onClick={() => setIsCustomerModalOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {customerType === "walk-in" ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-600 mb-4">Walk-in customers don't require selection.</p>
-                  <p className="text-sm text-gray-500">Change customer type to Loyalty or Wholesale to select a customer.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <label className="block mb-2 text-sm font-medium">
-                      Select {customerType === "loyalty" ? "Loyalty" : "Wholesale"} Customer:
-                    </label>
-                    <select
-                      value={currentCustomer?.id || ""}
-                      onChange={(e) => {
-                        const customer = customers.find((c) => c.id === parseInt(e.target.value));
-                        dispatch(setCustomer(customer || null));
-                      }}
-                      className="w-full border-2 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="">-- Select Customer --</option>
-                      {customers
-                        .filter((c) => c.type === customerType)
-                        .map((cust) => (
-                          <option key={cust.id} value={cust.id}>
-                            {cust.name} - {cust.phone} - Credit: Rs {cust.creditBalance?.toFixed(2) || "0.00"}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  {currentCustomer && (
-                    <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <h4 className="font-semibold text-blue-900 mb-2">Selected Customer</h4>
-                      <div className="space-y-1 text-sm">
-                        <p><span className="font-medium">Name:</span> {currentCustomer.name}</p>
-                        <p><span className="font-medium">Phone:</span> {currentCustomer.phone}</p>
-                        <p><span className="font-medium">Email:</span> {currentCustomer.email || "N/A"}</p>
-                        <p><span className="font-medium">Credit Balance:</span> Rs {currentCustomer.creditBalance?.toFixed(2) || "0.00"}</p>
-                        {customerType === "loyalty" && (
-                          <p><span className="font-medium">Loyalty Points:</span> {currentCustomer.loyaltyPoints || 0}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        dispatch(setCustomer(null));
-                        setIsCustomerModalOpen(false);
-                      }}
-                      className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={() => setIsCustomerModalOpen(false)}
-                      className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition"
-                    >
-                      Done
-                    </button>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t">
-                    <button
-                      onClick={() => {
-                        setIsCustomerModalOpen(false);
-                        navigate(`/customers/add?type=${customerType}`);
-                      }}
-                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Add New {customerType === "loyalty" ? "Loyalty" : "Wholesale"} Customer
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )
-      }
+      <CustomerSelectionModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        customerType={customerType}
+        customers={customers}
+        currentCustomer={currentCustomer}
+        setCustomer={(customer) => dispatch(setCustomer(customer))}
+        navigate={navigate}
+      />
 
       {/* LAST SALE VIEW MODAL */}
-      {
-        isLastSaleModalOpen && lastSale && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">Last Sale Details</h3>
-                <button
-                  onClick={() => setIsLastSaleModalOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="space-y-3 mb-4">
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg">
-                  <div>
-                    <p className="text-xs text-gray-600">Sale ID</p>
-                    <p className="font-semibold">{lastSale.id}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Date & Time</p>
-                    <p className="font-semibold">{new Date(lastSale.saleDate || lastSale.date).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Payment Type</p>
-                    <p className="font-semibold">{lastSale.paymentType}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Customer</p>
-                    <p className="font-semibold">{lastSale.customer?.name || "Walk-in"}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-2">Items:</h4>
-                  <table className="w-full text-sm border">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="text-left p-2 border">Product</th>
-                        <th className="text-center p-2 border">Qty</th>
-                        <th className="text-right p-2 border">Price</th>
-                        <th className="text-right p-2 border">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lastSale.saleItems?.map((item, idx) => (
-                        <tr key={idx} className="border-b">
-                          <td className="p-2">{item.productName || item.name}</td>
-                          <td className="text-center p-2">{item.quantity}</td>
-                          <td className="text-right p-2">Rs {item.price.toFixed(2)}</td>
-                          <td className="text-right p-2 font-semibold">
-                            Rs {(item.price * item.quantity).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold">Total Amount:</span>
-                    <span className="text-xl font-bold text-blue-600">
-                      Rs {lastSale.totalAmount.toFixed(2)}
-                    </span>
-                  </div>
-                  {lastSale.paymentType === "Cash" && (
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span>Amount Paid:</span>
-                        <span>Rs {lastSale.amountPaid?.toFixed(2) || "0.00"}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Change:</span>
-                        <span>Rs {lastSale.change?.toFixed(2) || "0.00"}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={handleLoadLastSale}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Load to Current Sale
-                </button>
-                <button
-                  onClick={() => {
-                    i18n.changeLanguage(storeSetting.receiptLanguage || "en");
-                    setReceiptData(lastSale);
-                    setIsLastSaleModalOpen(false);
-                    setIsReceiptOpen(true);
-                  }}
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print Receipt
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      }
+      <LastSaleModal
+        isOpen={isLastSaleModalOpen}
+        onClose={() => setIsLastSaleModalOpen(false)}
+        lastSale={lastSale}
+        onLoadSale={handleLoadLastSale}
+        onPrintReceipt={(saleData) => {
+          i18n.changeLanguage(storeSetting.receiptLanguage || "en");
+          setReceiptData(saleData);
+          setIsLastSaleModalOpen(false);
+          setIsReceiptOpen(true);
+        }}
+        i18n={i18n}
+        storeSetting={storeSetting}
+      />
 
       {/* HELD SALES MODAL */}
-      {isHeldSalesModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Held Sales
-                <span className="ml-2 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                  {holdSales.length} {holdSales.length === 1 ? 'sale' : 'sales'}
-                </span>
-              </h3>
-              <button
-                onClick={() => setIsHeldSalesModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {holdSales.length === 0 ? (
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-gray-500 mb-2">No held sales</p>
-                <p className="text-sm text-gray-400">Sales that are put on hold will appear here</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {holdSales.map((sale) => (
-                  <div
-                    key={sale.id}
-                    onClick={() => {
-                      resumeSale(sale);
-                      setIsHeldSalesModalOpen(false);
-                    }}
-                    className="border-2 border-yellow-400 rounded-lg p-4 hover:bg-yellow-50 transition cursor-pointer hover:shadow-lg"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Sale ID</div>
-                        <div className="text-lg font-bold text-gray-800">#{sale.id}</div>
-                      </div>
-                      <div className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold">
-                        On Hold
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 mb-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Time:</span>
-                        <span className="font-semibold">{new Date(sale.saleDate).toLocaleTimeString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Items:</span>
-                        <span className="font-semibold">{sale.saleItems?.length || 0} items</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Qty:</span>
-                        <span className="font-semibold">
-                          {sale.saleItems?.reduce((sum, item) => sum + item.quantity, 0) || 0} units
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-yellow-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-700">Total Amount:</span>
-                        <span className="text-xl font-bold text-blue-600">
-                          Rs {sale.totalAmount.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 pt-3 border-t border-yellow-200">
-                      <div className="text-xs text-gray-500 mb-2">Items Preview:</div>
-                      <div className="space-y-1">
-                        {sale.saleItems?.slice(0, 3).map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-xs">
-                            <span className="truncate flex-1">{item.productName}</span>
-                            <span className="font-semibold ml-2">×{item.quantity}</span>
-                          </div>
-                        ))}
-                        {sale.saleItems?.length > 3 && (
-                          <div className="text-xs text-gray-500 italic">
-                            +{sale.saleItems.length - 3} more items...
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <button className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Resume Sale
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <HeldSalesModal
+        isOpen={isHeldSalesModalOpen}
+        onClose={() => setIsHeldSalesModalOpen(false)}
+        holdSales={holdSales}
+        onResumeSale={(sale) => {
+          resumeSale(sale);
+          setIsHeldSalesModalOpen(false);
+        }}
+      />
 
       <PriceSelectionModal
         isOpen={showPriceModal}

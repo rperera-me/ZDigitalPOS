@@ -1,6 +1,6 @@
 import React, { forwardRef } from "react";
 import Modal from "react-modal";
-import ReceiptView from "./ReceiptView";
+import ReceiptView from "../receipt/ReceiptView";
 import { useTranslation } from "react-i18next";
 import { useReactToPrint } from "react-to-print";
 
