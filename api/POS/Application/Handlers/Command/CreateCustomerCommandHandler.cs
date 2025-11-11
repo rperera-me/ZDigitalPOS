@@ -1,13 +1,11 @@
-﻿namespace POS.Application.Handlers.Command
-{
-    using MediatR;
-    using PosSystem.Application.Commands.Customers;
-    using PosSystem.Application.DTOs;
-    using PosSystem.Domain.Entities;
-    using PosSystem.Domain.Repositories;
-    using System.Threading;
-    using System.Threading.Tasks;
+﻿using MediatR;
+using PosSystem.Application.Commands.Customers;
+using PosSystem.Application.DTOs;
+using PosSystem.Domain.Entities;
+using PosSystem.Domain.Repositories;
 
+namespace POS.Application.Handlers.Command
+{
     public class CreateCustomerCommandHandler : IRequestHandler<CreateCustomerCommand, CustomerDto>
     {
         private readonly ICustomerRepository _repository;
@@ -23,7 +21,12 @@
             {
                 Name = request.Name,
                 Phone = request.Phone,
-                CreditBalance = request.CreditBalance
+                Address = request.Address,
+                NICNumber = request.NICNumber,
+                Type = request.Type,
+                CreditBalance = request.CreditBalance,
+                LoyaltyPoints = 0,
+                CreatedAt = DateTime.Now
             };
 
             var created = await _repository.AddAsync(entity);
@@ -33,7 +36,12 @@
                 Id = created.Id,
                 Name = created.Name,
                 Phone = created.Phone,
-                CreditBalance = created.CreditBalance
+                Address = created.Address,
+                NICNumber = created.NICNumber,
+                Type = created.Type,
+                CreditBalance = created.CreditBalance,
+                LoyaltyPoints = created.LoyaltyPoints,
+                CreatedAt = created.CreatedAt
             };
         }
     }

@@ -6,6 +6,7 @@ namespace PosSystem.Domain.Repositories
     {
         Task<Customer?> GetByIdAsync(int id);
         Task<IEnumerable<Customer>> GetAllAsync();
+        Task<IEnumerable<Customer>> GetByTypeAsync(string type);
         Task<Customer> AddAsync(Customer customer);
         Task<Customer> UpdateAsync(Customer customer);
         Task DeleteAsync(int id);

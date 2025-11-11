@@ -45,6 +45,7 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<IProductBatchRepository, ProductBatchRepository>();
 builder.Services.AddScoped<IGRNRepository, GRNRepository>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 
 // Register MediatR for CQRS handlers
 builder.Services.AddMediatR(cfg =>

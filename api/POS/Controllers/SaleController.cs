@@ -1,10 +1,11 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using POS.Application.Commands.Sales;
+using POS.Application.DTOs;
 using PosSystem.Application.Commands.Sales;
 using PosSystem.Application.DTOs;
 using PosSystem.Application.Queries.Sales;
-using PosSystem.Domain.Entities;
+using PosSystem.Domain.Repositories;
 
 namespace PosSystem.Controllers
 {
@@ -13,9 +14,20 @@ namespace PosSystem.Controllers
     public class SaleController : ControllerBase
     {
         private readonly IMediator _mediator;
-        public SaleController(IMediator mediator)
+        private readonly ISaleRepository _saleRepository;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IProductRepository _productRepository;
+
+        public SaleController(
+            IMediator mediator,
+            ISaleRepository saleRepository,
+            ICustomerRepository customerRepository,
+            IProductRepository productRepository)
         {
             _mediator = mediator;
+            _saleRepository = saleRepository;
+            _customerRepository = customerRepository;
+            _productRepository = productRepository;
         }
 
         [HttpGet("{id}")]
@@ -45,6 +57,80 @@ namespace PosSystem.Controllers
         {
             var heldSales = await _mediator.Send(new GetHeldSalesQuery());
             return Ok(heldSales);
+        }
+
+        [HttpGet("last")]
+        public async Task<ActionResult<SaleDto>> GetLastSale()
+        {
+            // Get the most recent completed sale
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+            var sales = await _saleRepository.GetSalesByDateRangeAsync(today.AddDays(-7), tomorrow);
+            var lastSale = sales.Where(s => !s.IsHeld).OrderByDescending(s => s.SaleDate).FirstOrDefault();
+
+            if (lastSale == null)
+                return NotFound(new { message = "No sales found" });
+
+            // Get customer details if exists
+            CustomerDto? customerDto = null;
+            if (lastSale.CustomerId.HasValue)
+            {
+                var customer = await _customerRepository.GetByIdAsync(lastSale.CustomerId.Value);
+                if (customer != null)
+                {
+                    customerDto = new CustomerDto
+                    {
+                        Id = customer.Id,
+                        Name = customer.Name,
+                        Phone = customer.Phone,
+                        Type = customer.Type,
+                        CreditBalance = customer.CreditBalance,
+                        LoyaltyPoints = customer.LoyaltyPoints
+                    };
+                }
+            }
+
+            // Get product names for sale items
+            var productIds = lastSale.SaleItems.Select(si => si.ProductId).Distinct();
+            var products = await _productRepository.GetByIdsAsync(productIds);
+            var productDict = products.ToDictionary(p => p.Id, p => p.Name);
+
+            var saleDto = new SaleDto
+            {
+                Id = lastSale.Id,
+                CashierId = lastSale.CashierId,
+                CustomerId = lastSale.CustomerId,
+                Customer = customerDto,
+                SaleDate = lastSale.SaleDate,
+                IsHeld = lastSale.IsHeld,
+                TotalAmount = lastSale.TotalAmount,
+                DiscountType = lastSale.DiscountType,
+                DiscountValue = lastSale.DiscountValue,
+                DiscountAmount = lastSale.DiscountAmount,
+                FinalAmount = lastSale.FinalAmount ?? lastSale.TotalAmount,
+                PaymentType = lastSale.PaymentType,
+                AmountPaid = lastSale.AmountPaid,
+                Change = lastSale.Change,
+                SaleItems = lastSale.SaleItems.Select(si => new SaleItemDto
+                {
+                    Id = si.Id,
+                    ProductId = si.ProductId,
+                    ProductName = productDict.ContainsKey(si.ProductId) ? productDict[si.ProductId] : "Unknown",
+                    BatchId = si.BatchId,
+                    BatchNumber = si.BatchNumber,
+                    Quantity = si.Quantity,
+                    Price = si.Price
+                }).ToList(),
+                Payments = lastSale.Payments.Select(p => new PaymentDto
+                {
+                    Id = p.Id,
+                    Type = p.Type,
+                    Amount = p.Amount,
+                    CardLastFour = p.CardLastFour
+                }).ToList()
+            };
+
+            return Ok(saleDto);
         }
 
         [HttpPost]

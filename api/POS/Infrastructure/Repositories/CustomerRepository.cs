@@ -16,8 +16,8 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Customer> AddAsync(Customer customer)
         {
-            var sql = @"INSERT INTO Customers (Name, Phone, CreditBalance)
-                        VALUES (@Name, @Phone, @CreditBalance);
+            var sql = @"INSERT INTO Customers (Name, Phone, Address, NICNumber, Type, CreditBalance, LoyaltyPoints, CreatedAt)
+                        VALUES (@Name, @Phone, @Address, @NICNumber, @Type, @CreditBalance, @LoyaltyPoints, @CreatedAt);
                         SELECT CAST(SCOPE_IDENTITY() as int)";
             using var connection = _context.CreateConnection();
             var id = await connection.QuerySingleAsync<int>(sql, customer);
@@ -34,7 +34,7 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<IEnumerable<Customer>> GetAllAsync()
         {
-            var sql = "SELECT * FROM Customers";
+            var sql = "SELECT * FROM Customers ORDER BY Name";
             using var connection = _context.CreateConnection();
             return await connection.QueryAsync<Customer>(sql);
         }
@@ -48,11 +48,25 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Customer> UpdateAsync(Customer customer)
         {
-            var sql = @"UPDATE Customers SET Name = @Name, Phone = @Phone, CreditBalance = @CreditBalance
+            var sql = @"UPDATE Customers 
+                        SET Name = @Name, 
+                            Phone = @Phone, 
+                            Address = @Address,
+                            NICNumber = @NICNumber,
+                            Type = @Type,
+                            CreditBalance = @CreditBalance,
+                            LoyaltyPoints = @LoyaltyPoints
                         WHERE Id = @Id";
             using var connection = _context.CreateConnection();
             await connection.ExecuteAsync(sql, customer);
             return customer;
+        }
+
+        public async Task<IEnumerable<Customer>> GetByTypeAsync(string type)
+        {
+            var sql = "SELECT * FROM Customers WHERE Type = @Type ORDER BY Name";
+            using var connection = _context.CreateConnection();
+            return await connection.QueryAsync<Customer>(sql, new { Type = type });
         }
     }
 }

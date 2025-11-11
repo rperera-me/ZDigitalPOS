@@ -21,7 +21,11 @@ namespace POS.Application.Handlers.Command
 
             existing.Name = request.Name;
             existing.Phone = request.Phone;
+            existing.Address = request.Address;
+            existing.NICNumber = request.NICNumber;
+            existing.Type = request.Type;
             existing.CreditBalance = request.CreditBalance;
+            existing.LoyaltyPoints = request.LoyaltyPoints;
 
             var updated = await _repository.UpdateAsync(existing);
 
@@ -30,9 +34,13 @@ namespace POS.Application.Handlers.Command
                 Id = updated.Id,
                 Name = updated.Name,
                 Phone = updated.Phone,
-                CreditBalance = updated.CreditBalance
+                Address = updated.Address,
+                NICNumber = updated.NICNumber,
+                Type = updated.Type,
+                CreditBalance = updated.CreditBalance,
+                LoyaltyPoints = updated.LoyaltyPoints,
+                CreatedAt = updated.CreatedAt
             };
         }
     }
-
 }
