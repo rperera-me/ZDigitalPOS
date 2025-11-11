@@ -25,9 +25,12 @@ namespace POS.Application.Handlers.Query
                 Id = customer.Id,
                 Name = customer.Name,
                 Phone = customer.Phone,
-                CreditBalance = customer.CreditBalance
+                Address = customer.Address,
+                NICNumber = customer.NICNumber,
+                Type = customer.Type,
+                CreditBalance = customer.CreditBalance,
+                LoyaltyPoints = customer.LoyaltyPoints
             };
         }
     }
-
 }

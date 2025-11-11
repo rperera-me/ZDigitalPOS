@@ -17,6 +17,11 @@ namespace POS.Application.Handlers.Command
 
         public async Task<CustomerDto> Handle(CreateCustomerCommand request, CancellationToken cancellationToken)
         {
+            if (request.Type == "walk-in")
+            {
+                throw new InvalidOperationException("Walk-in customers cannot be saved. Only loyalty and wholesale customers are allowed.");
+            }
+
             var entity = new Customer
             {
                 Name = request.Name,
@@ -25,8 +30,7 @@ namespace POS.Application.Handlers.Command
                 NICNumber = request.NICNumber,
                 Type = request.Type,
                 CreditBalance = request.CreditBalance,
-                LoyaltyPoints = 0,
-                CreatedAt = DateTime.Now
+                LoyaltyPoints = 0
             };
 
             var created = await _repository.AddAsync(entity);
@@ -40,8 +44,7 @@ namespace POS.Application.Handlers.Command
                 NICNumber = created.NICNumber,
                 Type = created.Type,
                 CreditBalance = created.CreditBalance,
-                LoyaltyPoints = created.LoyaltyPoints,
-                CreatedAt = created.CreatedAt
+                LoyaltyPoints = created.LoyaltyPoints
             };
         }
     }

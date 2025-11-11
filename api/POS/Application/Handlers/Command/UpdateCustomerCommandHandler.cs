@@ -38,8 +38,7 @@ namespace POS.Application.Handlers.Command
                 NICNumber = updated.NICNumber,
                 Type = updated.Type,
                 CreditBalance = updated.CreditBalance,
-                LoyaltyPoints = updated.LoyaltyPoints,
-                CreatedAt = updated.CreatedAt
+                LoyaltyPoints = updated.LoyaltyPoints
             };
         }
     }

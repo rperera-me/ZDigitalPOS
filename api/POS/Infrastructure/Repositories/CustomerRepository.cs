@@ -16,8 +16,8 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Customer> AddAsync(Customer customer)
         {
-            var sql = @"INSERT INTO Customers (Name, Phone, Address, NICNumber, Type, CreditBalance, LoyaltyPoints, CreatedAt)
-                        VALUES (@Name, @Phone, @Address, @NICNumber, @Type, @CreditBalance, @LoyaltyPoints, @CreatedAt);
+            var sql = @"INSERT INTO Customers (Name, Phone, Address, NICNumber, Type, CreditBalance, LoyaltyPoints)
+                        VALUES (@Name, @Phone, @Address, @NICNumber, @Type, @CreditBalance, @LoyaltyPoints);
                         SELECT CAST(SCOPE_IDENTITY() as int)";
             using var connection = _context.CreateConnection();
             var id = await connection.QuerySingleAsync<int>(sql, customer);

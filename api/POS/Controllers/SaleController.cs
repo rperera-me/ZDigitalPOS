@@ -71,18 +71,20 @@ namespace PosSystem.Controllers
             if (lastSale == null)
                 return NotFound(new { message = "No sales found" });
 
-            // Get customer details if exists
+            // ✅ UPDATED - Get customer details if exists
             CustomerDto? customerDto = null;
             if (lastSale.CustomerId.HasValue)
             {
                 var customer = await _customerRepository.GetByIdAsync(lastSale.CustomerId.Value);
-                if (customer != null)
+                if (customer != null && customer.Type != "walk-in")
                 {
                     customerDto = new CustomerDto
                     {
                         Id = customer.Id,
                         Name = customer.Name,
                         Phone = customer.Phone,
+                        Address = customer.Address,
+                        NICNumber = customer.NICNumber,
                         Type = customer.Type,
                         CreditBalance = customer.CreditBalance,
                         LoyaltyPoints = customer.LoyaltyPoints

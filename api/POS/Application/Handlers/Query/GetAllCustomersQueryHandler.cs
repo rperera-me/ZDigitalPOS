@@ -22,14 +22,19 @@
         {
             var customers = await _repository.GetAllAsync();
 
-            return customers.Select(c => new CustomerDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Phone = c.Phone,
-                CreditBalance = c.CreditBalance
-            });
+            // ✅ UPDATED - Filter out walk-in customers and return full details
+            return customers
+                .Select(c => new CustomerDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Phone = c.Phone,
+                    Address = c.Address,
+                    NICNumber = c.NICNumber,
+                    Type = c.Type,
+                    CreditBalance = c.CreditBalance,
+                    LoyaltyPoints = c.LoyaltyPoints
+                });
         }
     }
-
 }

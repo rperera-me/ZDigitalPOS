@@ -164,8 +164,7 @@ namespace POS.Application.Handlers.Command
                         NICNumber = customer.NICNumber,
                         Type = customer.Type,
                         CreditBalance = customer.CreditBalance,
-                        LoyaltyPoints = customer.LoyaltyPoints,
-                        CreatedAt = customer.CreatedAt
+                        LoyaltyPoints = customer.LoyaltyPoints
                     };
                 }
             }

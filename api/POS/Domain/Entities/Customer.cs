@@ -10,6 +10,5 @@
         public string Type { get; set; } = "walk-in"; // walk-in, loyalty, wholesale
         public decimal CreditBalance { get; set; }
         public int LoyaltyPoints { get; set; } = 0;
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 }
