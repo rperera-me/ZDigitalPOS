@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
 import { setCustomers } from "../app/posSlice";
+import { AddCustomerModal } from "../components/modals";
 
 export default function AdminCustomersPage() {
   const dispatch = useDispatch();
@@ -16,7 +17,7 @@ export default function AdminCustomersPage() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [nicNumber, setNicNumber] = useState("");
-  const [type, setType] = useState("walk-in");
+  const [type, setType] = useState("loyalty");
   const [creditBalance, setCreditBalance] = useState("0");
   const [loyaltyPoints, setLoyaltyPoints] = useState("0");
 
@@ -33,7 +34,7 @@ export default function AdminCustomersPage() {
     setPhone("");
     setAddress("");
     setNicNumber("");
-    setType("walk-in");
+    setType("loyalty");
     setCreditBalance("0");
     setLoyaltyPoints("0");
     setEditingCustomer(null);
@@ -44,6 +45,12 @@ export default function AdminCustomersPage() {
 
     if (!name.trim()) {
       alert("Customer name is required");
+      return;
+    }
+
+    // ✅ ADD VALIDATION
+    if (type === "walk-in") {
+      alert("Walk-in customers cannot be saved. Please select Loyalty or Wholesale type.");
       return;
     }
 
@@ -124,7 +131,7 @@ export default function AdminCustomersPage() {
           </div>
           <button
             onClick={() => {
-              resetForm();
+              setEditingCustomer(null);
               setShowModal(true);
             }}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2 shadow-md"
@@ -143,43 +150,30 @@ export default function AdminCustomersPage() {
           <div className="flex">
             <button
               onClick={() => setActiveTab("all")}
-              className={`flex-1 px-6 py-4 font-semibold transition ${
-                activeTab === "all"
-                  ? "bg-blue-50 text-blue-700 border-b-2 border-blue-500"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`flex-1 px-6 py-4 font-semibold transition ${activeTab === "all"
+                ? "bg-blue-50 text-blue-700 border-b-2 border-blue-500"
+                : "text-gray-600 hover:bg-gray-50"
+                }`}
             >
               All Customers ({customers.length})
             </button>
             <button
               onClick={() => setActiveTab("loyalty")}
-              className={`flex-1 px-6 py-4 font-semibold transition ${
-                activeTab === "loyalty"
-                  ? "bg-purple-50 text-purple-700 border-b-2 border-purple-500"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`flex-1 px-6 py-4 font-semibold transition ${activeTab === "loyalty"
+                ? "bg-purple-50 text-purple-700 border-b-2 border-purple-500"
+                : "text-gray-600 hover:bg-gray-50"
+                }`}
             >
               Loyalty ({customers.filter(c => c.type === "loyalty").length})
             </button>
             <button
               onClick={() => setActiveTab("wholesale")}
-              className={`flex-1 px-6 py-4 font-semibold transition ${
-                activeTab === "wholesale"
-                  ? "bg-blue-50 text-blue-700 border-b-2 border-blue-500"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`flex-1 px-6 py-4 font-semibold transition ${activeTab === "wholesale"
+                ? "bg-blue-50 text-blue-700 border-b-2 border-blue-500"
+                : "text-gray-600 hover:bg-gray-50"
+                }`}
             >
               Wholesale ({customers.filter(c => c.type === "wholesale").length})
-            </button>
-            <button
-              onClick={() => setActiveTab("walk-in")}
-              className={`flex-1 px-6 py-4 font-semibold transition ${
-                activeTab === "walk-in"
-                  ? "bg-gray-50 text-gray-700 border-b-2 border-gray-500"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              Walk-in ({customers.filter(c => c.type === "walk-in").length})
             </button>
           </div>
         </div>
@@ -289,144 +283,13 @@ export default function AdminCustomersPage() {
         </div>
       </div>
 
-      {/* Add/Edit Customer Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-800">
-                {editingCustomer ? "Edit Customer" : "Add New Customer"}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-                className="text-gray-500 hover:text-gray-700 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Customer Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                    placeholder="Enter customer name"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">
-                    Customer Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="walk-in">Walk-in</option>
-                    <option value="loyalty">Loyalty</option>
-                    <option value="wholesale">Wholesale</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Phone Number</label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                    placeholder="Enter phone number"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">NIC Number</label>
-                  <input
-                    type="text"
-                    value={nicNumber}
-                    onChange={(e) => setNicNumber(e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                    placeholder="Enter NIC number"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Address</label>
-                  <textarea
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                    placeholder="Enter address"
-                    rows="3"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Credit Balance</label>
-                  <input
-                    type="number"
-                    value={creditBalance}
-                    onChange={(e) => setCreditBalance(e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-
-                {type === "loyalty" && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-gray-700">Loyalty Points</label>
-                    <input
-                      type="number"
-                      value={loyaltyPoints}
-                      onChange={(e) => setLoyaltyPoints(e.target.value)}
-                      className="w-full border-2 border-purple-300 rounded-lg p-2 focus:outline-none focus:border-purple-500 bg-purple-50"
-                      placeholder="0"
-                      min="0"
-                      disabled={!editingCustomer}
-                    />
-                    {!editingCustomer && (
-                      <p className="text-xs text-gray-500 mt-1">Points are earned through purchases</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
-                >
-                  {editingCustomer ? "Update Customer" : "Add Customer"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showModal && !editingCustomer && (
+        <AddCustomerModal
+          isOpen={showModal && !editingCustomer}
+          onClose={() => setShowModal(false)}
+          onCustomerAdded={fetchCustomers}
+          customerType="loyalty" // Default to loyalty, or make it selectable
+        />
       )}
     </div>
   );

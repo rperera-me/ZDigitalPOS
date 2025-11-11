@@ -68,10 +68,16 @@ export default function PaymentModal({
 
   // Sync credit customer with current customer from sale
   useEffect(() => {
-    if (currentCustomer && (customerType === "loyalty" || customerType === "wholesale")) {
+    if (isOpen && currentCustomer && (customerType === "loyalty" || customerType === "wholesale")) {
+      console.log("🔄 Syncing customer to payment modal:", currentCustomer); // ✅ Debug log
       setCreditCustomer(currentCustomer);
+
+      // Auto-switch to credit tab if customer has credit or if credit payment makes sense
+      if (currentCustomer.creditBalance > 0 || customerType === "loyalty" || customerType === "wholesale") {
+        setActiveTab('credit');
+      }
     }
-  }, [currentCustomer, customerType]);
+  }, [isOpen, currentCustomer, customerType]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -80,12 +86,16 @@ export default function PaymentModal({
       setCardAmount("");
       setCardLastFour("");
       setCreditAmount("");
-      setCreditCustomer(currentCustomer || null);
+      if (customerType !== "walk-in" && currentCustomer) {
+        setCreditCustomer(currentCustomer);
+      } else {
+        setCreditCustomer(null);
+      }
       setDiscountType("percentage");
       setDiscountValue("");
       setActiveTab('cash');
     }
-  }, [isOpen, currentCustomer]);
+  }, [isOpen, currentCustomer, customerType]);
 
   // Event handlers
   const handleCashChange = useCallback((e) => {
@@ -231,15 +241,18 @@ export default function PaymentModal({
             >
               💳 Card
             </button>
-            <button
-              onClick={() => setActiveTab('credit')}
-              className={`flex-1 px-3 py-2 font-semibold text-sm transition ${activeTab === 'credit'
-                ? 'bg-orange-100 text-orange-700 border-b-2 border-orange-500'
-                : 'text-gray-600 hover:bg-gray-100'
-                }`}
-            >
-              📋 Credit
-            </button>
+            {/* ✅ ONLY SHOW CREDIT TAB IF NOT WALK-IN */}
+            {customerType !== "walk-in" && (
+              <button
+                onClick={() => setActiveTab('credit')}
+                className={`flex-1 px-3 py-2 font-semibold text-sm transition ${activeTab === 'credit'
+                  ? 'bg-orange-100 text-orange-700 border-b-2 border-orange-500'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+              >
+                📋 Credit
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('discount')}
               className={`flex-1 px-3 py-2 font-semibold text-sm transition ${activeTab === 'discount'
@@ -317,102 +330,97 @@ export default function PaymentModal({
           )}
 
           {/* Credit Tab */}
-          {activeTab === 'credit' && (
+          {activeTab === 'credit' && customerType !== "walk-in" && (
             <div className="space-y-3">
-              {customerType === "walk-in" ? (
-                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 text-center">
-                  <svg className="w-12 h-12 mx-auto text-yellow-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-yellow-800 font-medium">Credit payment not available for walk-in customers</p>
-                  <p className="text-yellow-600 text-sm mt-1">Please select Loyalty or Wholesale customer type in the sale screen</p>
-                </div>
-              ) : (
+              {/* Customer Selection - Auto-filled if customer already selected */}
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  {customerType === "loyalty" ? "Loyalty" : "Wholesale"} Customer
+                </label>
+                <select
+                  value={creditCustomer?.id || ""}
+                  onChange={handleCreditCustomerChange}
+                  className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-orange-500"
+                  disabled={!!currentCustomer} // ✅ Disable if customer already selected from sale
+                >
+                  <option value="">-- Select Customer --</option>
+                  {filteredCustomers.map((cust) => (
+                    <option key={cust.id} value={cust.id}>
+                      {cust.name} - {cust.phone}
+                    </option>
+                  ))}
+                </select>
+                {currentCustomer && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Customer auto-loaded from sale
+                  </p>
+                )}
+              </div>
+
+              {creditCustomer && (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Select {customerType === "loyalty" ? "Loyalty" : "Wholesale"} Customer
-                    </label>
-                    <select
-                      value={creditCustomer?.id || ""}
-                      onChange={handleCreditCustomerChange}
-                      className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-orange-500"
-                    >
-                      <option value="">-- Select Customer --</option>
-                      {filteredCustomers.map((cust) => (
-                        <option key={cust.id} value={cust.id}>
-                          {cust.name} - {cust.phone}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {creditCustomer && (
-                    <>
-                      {/* Customer Summary */}
-                      <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-200 rounded-lg p-3">
-                        <h4 className="font-semibold text-orange-900 mb-2 text-sm">Customer Summary</h4>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-700">Name:</span>
-                            <span className="font-semibold text-gray-900">{creditCustomer.name}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-700">Phone:</span>
-                            <span className="font-semibold text-gray-900">{creditCustomer.phone}</span>
-                          </div>
-                          <div className="flex justify-between pt-1 border-t border-orange-300">
-                            <span className="text-gray-700">Current Credit Balance:</span>
-                            <span className="font-bold text-orange-600">
-                              Rs {(creditCustomer.creditBalance || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          {customerType === "loyalty" && creditCustomer.loyaltyPoints !== undefined && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-700">Loyalty Points:</span>
-                              <span className="font-bold text-purple-600">{creditCustomer.loyaltyPoints || 0}</span>
-                            </div>
-                          )}
-                        </div>
+                  {/* Customer Summary */}
+                  <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-200 rounded-lg p-3">
+                    <h4 className="font-semibold text-orange-900 mb-2 text-sm">Customer Summary</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Name:</span>
+                        <span className="font-semibold text-gray-900">{creditCustomer.name}</span>
                       </div>
-
-                      {/* Credit Amount */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Credit Amount</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={creditAmount}
-                          readOnly
-                          className="w-full border-2 border-orange-300 rounded-lg p-3 text-lg bg-orange-50 font-bold text-orange-600"
-                          placeholder="Auto-calculated"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          * Credit amount is automatically calculated based on remaining payment
-                        </p>
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Phone:</span>
+                        <span className="font-semibold text-gray-900">{creditCustomer.phone}</span>
                       </div>
-
-                      {/* New Balance Preview */}
-                      {creditPaid > 0 && (
-                        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-700">New Credit Balance:</span>
-                            <span className="text-lg font-bold text-red-600">
-                              Rs {((creditCustomer.creditBalance || 0) + creditPaid).toFixed(2)}
-                            </span>
-                          </div>
+                      <div className="flex justify-between pt-1 border-t border-orange-300">
+                        <span className="text-gray-700">Current Credit Balance:</span>
+                        <span className="font-bold text-orange-600">
+                          Rs {(creditCustomer.creditBalance || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      {customerType === "loyalty" && creditCustomer.loyaltyPoints !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-700">Loyalty Points:</span>
+                          <span className="font-bold text-purple-600">{creditCustomer.loyaltyPoints || 0}</span>
                         </div>
                       )}
-                    </>
-                  )}
+                    </div>
+                  </div>
 
-                  {!creditCustomer && (
-                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center">
-                      <p className="text-blue-800 font-medium">Please select a customer to use credit payment</p>
+                  {/* Credit Amount */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Credit Amount</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={creditAmount}
+                      readOnly
+                      className="w-full border-2 border-orange-300 rounded-lg p-3 text-lg bg-orange-50 font-bold text-orange-600"
+                      placeholder="Auto-calculated"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      * Credit amount is automatically calculated based on remaining payment
+                    </p>
+                  </div>
+
+                  {/* New Balance Preview */}
+                  {creditPaid > 0 && (
+                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700">New Credit Balance:</span>
+                        <span className="text-lg font-bold text-red-600">
+                          Rs {((creditCustomer.creditBalance || 0) + creditPaid).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </>
+              )}
+
+              {!creditCustomer && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center">
+                  <p className="text-blue-800 font-medium">Please select a customer to use credit payment</p>
+                </div>
               )}
             </div>
           )}
@@ -535,6 +543,6 @@ export default function PaymentModal({
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

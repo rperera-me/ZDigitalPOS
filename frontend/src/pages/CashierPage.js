@@ -18,11 +18,11 @@ import { useNavigate } from "react-router-dom";
 import storeSetting from "../config/storeSettings";
 import {
   PaymentModal,
-  CustomerSelectionModal,
   LastSaleModal,
   HeldSalesModal,
   PriceSelectionModal,
-  ReceiptModal
+  ReceiptModal,
+  AddCustomerModal
 } from "../components/modals";
 
 export default function CashierPage() {
@@ -43,24 +43,34 @@ export default function CashierPage() {
 
   // Local state
   const [searchTerm, setSearchTerm] = useState("");
-  const [barcodeInput, setBarcodeInput] = useState("");
+
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+
+  const [isLastSaleModalOpen, setIsLastSaleModalOpen] = useState(false);
+  const [lastSale, setLastSale] = useState(null);
+
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [barcodeQuantity, setBarcodeQuantity] = useState(1);
+
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [priceVariants, setPriceVariants] = useState([]);
+
+  const [isHeldSalesModalOpen, setIsHeldSalesModalOpen] = useState(false);
 
   const [customerType, setCustomerType] = useState("walk-in"); // walk-in, loyalty, wholesale
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
-  const [isLastSaleModalOpen, setIsLastSaleModalOpen] = useState(false);
-  const [lastSale, setLastSale] = useState(null);
-  const [barcodeQuantity, setBarcodeQuantity] = useState(1);
 
-  const [showPriceModal, setShowPriceModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [priceVariants, setPriceVariants] = useState([]);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [addCustomerType, setAddCustomerType] = useState('loyalty');
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState("");
-  const [isHeldSalesModalOpen, setIsHeldSalesModalOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -425,13 +435,16 @@ export default function CashierPage() {
     });
   }
 
-  function handleSelectCustomerForSale() {
-    const customer = customers.find((c) => c.id === parseInt(selectedCustomerId));
-    if (customer) {
-      dispatch(setCustomer(customer));
-      setIsCustomerModalOpen(false);
-    }
-  }
+  const handleCustomerAdded = useCallback((newCustomer) => {
+    // Refresh customers list
+    api.get("/customer").then((res) => {
+      const filteredCustomers = res.data.filter(c => c.type !== "walk-in");
+      dispatch(setCustomers(filteredCustomers));
+
+      // Auto-select the newly added customer
+      dispatch(setCustomer(newCustomer));
+    });
+  }, [dispatch]);
 
   function handleLoadLastSale() {
     if (!lastSale) return;
@@ -745,7 +758,7 @@ export default function CashierPage() {
                 <option value="wholesale">Wholesale</option>
               </select>
 
-              {/* Inline Customer Selection - Shows when Loyalty or Wholesale selected */}
+              {/* Inline Customer Selection for Loyalty/Wholesale */}
               {(customerType === "loyalty" || customerType === "wholesale") && (
                 <>
                   <select
@@ -756,36 +769,40 @@ export default function CashierPage() {
                     }}
                     className="flex-1 border rounded p-1 text-xs focus:outline-none focus:border-blue-500"
                   >
-                    <option value="">-- Select --</option>
+                    <option value="">-- Select Customer --</option>
                     {customers
                       .filter((c) => c.type === customerType)
                       .map((cust) => (
                         <option key={cust.id} value={cust.id}>
-                          {cust.name} - {cust.phone}
+                          {cust.name} - {cust.phone || 'N/A'}
                         </option>
                       ))}
                   </select>
                   <button
-                    onClick={() => setIsCustomerModalOpen(true)}
-                    className="bg-blue-600 text-white p-1 rounded hover:bg-blue-700"
-                    title="View/Edit Customer"
+                    onClick={() => {
+                      setAddCustomerType(customerType);
+                      setShowAddCustomerModal(true);
+                    }}
+                    className="bg-green-600 text-white p-1 rounded hover:bg-green-700 transition flex items-center gap-1 px-2"
+                    title="Add New Customer"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
+                    <span className="text-xs">Add</span>
                   </button>
                 </>
               )}
             </div>
 
-            {/* Compact Customer Info Display (appears on next line if needed) */}
+            {/* Customer Info Display */}
             {currentCustomer && (customerType === "loyalty" || customerType === "wholesale") && (
               <div className="mt-1 p-1 bg-blue-50 rounded border border-blue-200">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold text-blue-900 truncate">{currentCustomer.name}</span>
                   <div className="flex gap-2 text-blue-600">
                     <span>Credit: Rs {currentCustomer.creditBalance?.toFixed(2) || "0.00"}</span>
-                    {customerType === "loyalty" && currentCustomer.loyaltyPoints && (
+                    {customerType === "loyalty" && currentCustomer.loyaltyPoints !== undefined && (
                       <span>Pts: {currentCustomer.loyaltyPoints}</span>
                     )}
                   </div>
@@ -975,6 +992,7 @@ export default function CashierPage() {
         getTotalAmount={getTotalAmount}
         customers={customers}
         currentCustomer={currentCustomer}
+        customerType={customerType}
       />
 
       {/* RECEIPT MODAL */}
@@ -983,17 +1001,6 @@ export default function CashierPage() {
         isOpen={isReceiptOpen}
         onClose={() => setIsReceiptOpen(false)}
         saleData={receiptData}
-      />
-
-      {/* CUSTOMER SELECTION MODAL */}
-      <CustomerSelectionModal
-        isOpen={isCustomerModalOpen}
-        onClose={() => setIsCustomerModalOpen(false)}
-        customerType={customerType}
-        customers={customers}
-        currentCustomer={currentCustomer}
-        setCustomer={(customer) => dispatch(setCustomer(customer))}
-        navigate={navigate}
       />
 
       {/* LAST SALE VIEW MODAL */}
@@ -1035,6 +1042,13 @@ export default function CashierPage() {
         priceVariants={priceVariants}
         onSelectPrice={handlePriceSelect}
         customerType={customerType === "wholesale" ? "wholesale" : "retail"}
+      />
+
+      <AddCustomerModal
+        isOpen={showAddCustomerModal}
+        onClose={() => setShowAddCustomerModal(false)}
+        onCustomerAdded={handleCustomerAdded}
+        customerType={addCustomerType}
       />
     </div >
   );
