@@ -1,9 +1,13 @@
 using Microsoft.OpenApi.Models;
 using POS.Application.Commands.Categories;
 using POS.Application.Commands.GRN;
+using POS.Application.Commands.Sales;
 using POS.Application.Commands.Suppliers;
 using POS.Application.Queries.Categories;
+using POS.Application.Queries.Dashboard;
+using POS.Application.Queries.GRN;
 using POS.Application.Queries.Products;
+using POS.Application.Queries.Sales;
 using POS.Application.Queries.Suppliers;
 using POS.Domain.Repositories;
 using POS.Infrastructure.Repositories;
@@ -66,13 +70,18 @@ builder.Services.AddMediatR(cfg =>
         typeof(UpdateCustomerCommand).Assembly,
 
         typeof(CreateSaleCommand).Assembly,
-        typeof(CompleteSaleCommand).Assembly,
-        typeof(HoldSaleCommand).Assembly,
+        typeof(DeleteHeldSaleCommand).Assembly,
         typeof(UpdateSaleCommand).Assembly,
 
         typeof(CreateUserCommand).Assembly,
         typeof(AuthenticateUserCommand).Assembly,
         typeof(UpdateUserCommand).Assembly,
+
+        typeof(CreateSupplierCommand).Assembly,
+        typeof(DeleteSupplierCommand).Assembly,
+        typeof(UpdateSupplierCommand).Assembly,
+
+        typeof(CreateGRNCommand).Assembly,
 
         typeof(GetAllCustomersQuery).Assembly,
         typeof(GetCustomerByIdQuery).Assembly,
@@ -81,6 +90,8 @@ builder.Services.AddMediatR(cfg =>
         typeof(GetProductByIdQuery).Assembly,
         typeof(GetProductsByCategoryQuery).Assembly,
         typeof(GetProductBatchesQuery).Assembly,
+        typeof(GetProductByBarcodeQuery).Assembly,
+        typeof(GetProductPriceVariantsQuery).Assembly,
 
         typeof(GetCategoryByIdQuery).Assembly,
         typeof(GetAllCategoriesQuery).Assembly,
@@ -89,14 +100,20 @@ builder.Services.AddMediatR(cfg =>
         typeof(GetSalesByCashierQuery).Assembly,
         typeof(GetSalesByDateRangeQuery).Assembly,
         typeof(GetHeldSalesQuery).Assembly,
+        typeof(GetSalesStatsQuery).Assembly,
 
         typeof(GetUserByIdQuery).Assembly,
         typeof(GetUserByUsernameQuery).Assembly,
 
-        typeof(CreateSupplierCommand).Assembly,
         typeof(GetAllSuppliersQuery).Assembly,
+        typeof(GetSupplierByIdQuery).Assembly,
 
-        typeof(CreateGRNCommand).Assembly
+        typeof(GetAllGRNsQuery).Assembly,
+        typeof(GetGRNByIdQuery).Assembly,
+        typeof(GetGRNsBySupplierQuery).Assembly,
+
+        typeof(GetBestSellersQuery).Assembly,
+        typeof(GetLowStockQuery).Assembly
     )
 );
 

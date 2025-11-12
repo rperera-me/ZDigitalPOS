@@ -15,23 +15,29 @@ namespace POS.Application.Handlers.Command
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IPaymentRepository _paymentRepository; // ✅ ADDED
 
         public CreateSaleCommandHandler(
             ISaleRepository saleRepository,
             IProductRepository productRepository,
             IProductBatchRepository batchRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IPaymentRepository paymentRepository) // ✅ ADDED
         {
             _saleRepository = saleRepository;
             _productRepository = productRepository;
             _batchRepository = batchRepository;
             _customerRepository = customerRepository;
+            _paymentRepository = paymentRepository; // ✅ ADDED
         }
 
         public async Task<SaleDto> Handle(CreateSaleCommand request, CancellationToken cancellationToken)
         {
             var saleItems = new List<SaleItem>();
-            var payments = new List<Payment>();
+
+            // ✅ VALIDATION: Ensure sale items exist
+            if (request.SaleItems == null || !request.SaleItems.Any())
+                throw new InvalidOperationException("Sale must have at least one item");
 
             // Process sale items and update inventory
             foreach (var itemDto in request.SaleItems)
@@ -42,7 +48,7 @@ namespace POS.Application.Handlers.Command
 
                 // Check stock availability
                 if (product.StockQuantity < itemDto.Quantity)
-                    throw new InvalidOperationException($"Insufficient stock for {product.Name}");
+                    throw new InvalidOperationException($"Insufficient stock for {product.Name}. Available: {product.StockQuantity}, Requested: {itemDto.Quantity}");
 
                 // If batch/source is specified, deduct from specific batch
                 if (itemDto.BatchId.HasValue && itemDto.BatchId.Value > 0)
@@ -52,7 +58,7 @@ namespace POS.Application.Handlers.Command
                         throw new KeyNotFoundException($"Batch ID {itemDto.BatchId} not found");
 
                     if (batch.RemainingQuantity < itemDto.Quantity)
-                        throw new InvalidOperationException($"Insufficient stock in batch {batch.BatchNumber}");
+                        throw new InvalidOperationException($"Insufficient stock in batch {batch.BatchNumber}. Available: {batch.RemainingQuantity}, Requested: {itemDto.Quantity}");
 
                     // Deduct from batch
                     batch.RemainingQuantity -= itemDto.Quantity;
@@ -73,22 +79,12 @@ namespace POS.Application.Handlers.Command
                 });
             }
 
-            // Process payments
-            if (request.Payments != null && request.Payments.Any())
-            {
-                foreach (var paymentDto in request.Payments)
-                {
-                    payments.Add(new Payment
-                    {
-                        Type = paymentDto.Type,
-                        Amount = paymentDto.Amount,
-                        CardLastFour = paymentDto.CardLastFour
-                    });
-                }
-            }
-
             // Calculate final amount
             var finalAmount = request.FinalAmount > 0 ? request.FinalAmount : request.TotalAmount;
+
+            // ✅ VALIDATION: Ensure payments exist for non-held sales
+            if (!request.IsHeld && (request.Payments == null || !request.Payments.Any()))
+                throw new InvalidOperationException("Completed sales must have at least one payment method");
 
             var sale = new Sale
             {
@@ -105,10 +101,32 @@ namespace POS.Application.Handlers.Command
                 AmountPaid = request.AmountPaid,
                 Change = request.Change,
                 SaleItems = saleItems,
-                Payments = payments
+                Payments = new List<Payment>() // ✅ Initialize empty list
             };
 
             var createdSale = await _saleRepository.AddAsync(sale);
+
+            // ✅ NOW USE PAYMENT REPOSITORY TO SAVE PAYMENTS
+            if (request.Payments != null && request.Payments.Any())
+            {
+                foreach (var paymentDto in request.Payments)
+                {
+                    var payment = new Payment
+                    {
+                        SaleId = createdSale.Id,
+                        Type = paymentDto.Type,
+                        Amount = paymentDto.Amount,
+                        CardLastFour = paymentDto.CardLastFour,
+                        CreatedAt = DateTime.Now
+                    };
+
+                    await _paymentRepository.AddAsync(payment);
+                }
+
+                // ✅ Reload payments for response
+                var savedPayments = await _paymentRepository.GetBySaleIdAsync(createdSale.Id);
+                createdSale.Payments = savedPayments.ToList();
+            }
 
             // Handle customer loyalty points and credit (only for completed sales)
             if (request.CustomerId.HasValue && !request.IsHeld)
@@ -117,7 +135,7 @@ namespace POS.Application.Handlers.Command
                 if (customer != null)
                 {
                     // Check if credit payment was made
-                    var creditPayment = payments.FirstOrDefault(p => p.Type == "Credit");
+                    var creditPayment = request.Payments?.FirstOrDefault(p => p.Type == "Credit");
                     if (creditPayment != null)
                     {
                         customer.CreditBalance += creditPayment.Amount;
@@ -133,12 +151,10 @@ namespace POS.Application.Handlers.Command
                     {
                         if (customer.CreditBalance > 0)
                         {
-                            // Customer has credit - set loyalty points to 0
                             customer.LoyaltyPoints = 0;
                         }
                         else
                         {
-                            // Add 1 loyalty point for every Rs.100 spent
                             int pointsToAdd = (int)(finalAmount / 100);
                             customer.LoyaltyPoints += pointsToAdd;
                         }

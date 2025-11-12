@@ -150,20 +150,6 @@ namespace PosSystem.Controllers
             return Ok(updated);
         }
 
-        [HttpPost("{id}/hold")]
-        public async Task<IActionResult> HoldSale(int id)
-        {
-            await _mediator.Send(new HoldSaleCommand { SaleId = id });
-            return NoContent();
-        }
-
-        [HttpPost("{id}/complete")]
-        public async Task<IActionResult> CompleteSale(int id)
-        {
-            await _mediator.Send(new CompleteSaleCommand { SaleId = id });
-            return NoContent();
-        }
-
         [HttpDelete("held/{saleId}")]
         public async Task<IActionResult> DeleteHeldSale(int saleId)
         {

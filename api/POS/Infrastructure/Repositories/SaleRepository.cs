@@ -307,11 +307,29 @@ namespace PosSystem.Infrastructure.Repositories
             return (await connection.QueryAsync<BestSellerDto>(sql)).ToList();
         }
 
-        public async Task ReleaseHeldSaleAsync(int saleId)
+        public async Task DeleteAsync(int saleId)
         {
-            var sql = "UPDATE Sales SET IsHeld = 0 WHERE Id = @SaleId AND IsHeld = 1";
+            var sqlDeletePayments = "DELETE FROM Payments WHERE SaleId = @SaleId";
+            var sqlDeleteItems = "DELETE FROM SaleItems WHERE SaleId = @SaleId";
+            var sqlDeleteSale = "DELETE FROM Sales WHERE Id = @Id";
+
             using var connection = _context.CreateConnection();
-            await connection.ExecuteAsync(sql, new { SaleId = saleId });
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                await connection.ExecuteAsync(sqlDeletePayments, new { SaleId = saleId }, transaction);
+                await connection.ExecuteAsync(sqlDeleteItems, new { SaleId = saleId }, transaction);
+                await connection.ExecuteAsync(sqlDeleteSale, new { Id = saleId }, transaction);
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
     }
 }
