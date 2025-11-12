@@ -45,6 +45,7 @@ namespace POS.Application.Handlers.Query
                     BatchNumber = item.BatchNumber,
                     Quantity = item.Quantity,
                     CostPrice = item.CostPrice,
+                    ProductPrice = item.ProductPrice,
                     SellingPrice = item.SellingPrice,
                     WholesalePrice = item.WholesalePrice,
                     ManufactureDate = item.ManufactureDate,
