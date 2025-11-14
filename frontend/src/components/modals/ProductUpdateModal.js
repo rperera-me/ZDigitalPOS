@@ -117,7 +117,7 @@ export default function ProductUpdateModal({
         wholesalePrice: parseFloat(editWholesalePrice)
       };
 
-      await api.put(`/product-batch/${batchId}`, updateData);
+      await api.put(`/product/batches/${batchId}`, updateData);
       
       alert("Batch prices updated successfully!");
       handleCancelBatchEdit();
