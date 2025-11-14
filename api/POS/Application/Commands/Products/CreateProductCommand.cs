@@ -8,11 +8,7 @@ namespace PosSystem.Application.Commands.Products
         public string Barcode { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public int CategoryId { get; set; }
-        public int? DefaultSupplierId { get; set; }
         public int StockQuantity { get; set; }
-
-        // New batch fields
-        public string? BatchNumber { get; set; }
         public decimal? CostPrice { get; set; }
         public decimal? ProductPrice { get; set; }
         public decimal? WholesalePrice { get; set; }

@@ -9,10 +9,6 @@ namespace PosSystem.Application.DTOs
         public string Name { get; set; } = string.Empty;
         public int CategoryId { get; set; }
         public string CategoryName { get; set; } = string.Empty;
-        public int? DefaultSupplierId { get; set; }
-        public string? DefaultSupplierName { get; set; }
-
-        // ✅ NEW: Price ranges from batches
         public decimal? MinCostPrice { get; set; }
         public decimal? MaxCostPrice { get; set; }
         public decimal? MinProductPrice { get; set; }
@@ -21,11 +17,8 @@ namespace PosSystem.Application.DTOs
         public decimal? MaxSellingPrice { get; set; }
         public decimal? MinWholesalePrice { get; set; }
         public decimal? MaxWholesalePrice { get; set; }
-
         public int StockQuantity { get; set; }
         public bool HasMultipleProductPrices { get; set; }
-
-        // ✅ Price sources (replaces Batches)
         public List<ProductBatchDto>? PriceSources { get; set; }
     }
 

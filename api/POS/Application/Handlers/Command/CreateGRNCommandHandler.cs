@@ -38,12 +38,10 @@ namespace POS.Application.Handlers.Command
                 Items = request.Items.Select(i => new GRNItem
                 {
                     ProductId = i.ProductId,
-                    BatchNumber = i.BatchNumber,
+                    BatchNumber = GenerateBatchNumber(grnNumber),
                     Quantity = i.Quantity,
                     CostPrice = i.CostPrice,
                     ProductPrice = i.ProductPrice,
-                    SellingPrice = i.SellingPrice,
-                    WholesalePrice = i.WholesalePrice,
                     ManufactureDate = i.ManufactureDate,
                     ExpiryDate = i.ExpiryDate
                 }).ToList()
@@ -57,12 +55,12 @@ namespace POS.Application.Handlers.Command
                 var batch = new ProductBatch
                 {
                     ProductId = item.ProductId,
-                    BatchNumber = item.BatchNumber,
+                    BatchNumber = GenerateBatchNumber(grnNumber),
                     SupplierId = request.SupplierId,
                     CostPrice = item.CostPrice,
                     ProductPrice = item.ProductPrice,
-                    SellingPrice = item.SellingPrice,
-                    WholesalePrice = item.WholesalePrice,
+                    SellingPrice = item.ProductPrice,
+                    WholesalePrice = item.ProductPrice,
                     Quantity = item.Quantity,
                     RemainingQuantity = item.Quantity,
                     ManufactureDate = item.ManufactureDate ?? DateTime.Now,
@@ -110,12 +108,16 @@ namespace POS.Application.Handlers.Command
                     Quantity = i.Quantity,
                     CostPrice = i.CostPrice,
                     ProductPrice = i.ProductPrice,
-                    SellingPrice = i.SellingPrice,
-                    WholesalePrice = i.WholesalePrice,
                     ManufactureDate = i.ManufactureDate,
                     ExpiryDate = i.ExpiryDate
                 }).ToList()
             };
+        }
+
+        private string GenerateBatchNumber(string grnNumber)
+        {
+            // Format: GRN20250113-001
+            return $"{grnNumber}-{DateTime.Now:HHmmss}";
         }
     }
 }

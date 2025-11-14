@@ -21,8 +21,6 @@
         public int Quantity { get; set; }
         public decimal CostPrice { get; set; }
         public decimal ProductPrice { get; set; }
-        public decimal SellingPrice { get; set; }
-        public decimal WholesalePrice { get; set; }
         public DateTime? ManufactureDate { get; set; }
         public DateTime? ExpiryDate { get; set; }
     }

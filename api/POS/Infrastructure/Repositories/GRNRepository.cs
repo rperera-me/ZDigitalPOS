@@ -21,11 +21,11 @@ namespace POS.Infrastructure.Repositories
                            SELECT CAST(SCOPE_IDENTITY() as int)";
 
             var sqlItem = @"INSERT INTO GRNItems 
-                            (GRNId, ProductId, BatchNumber, Quantity, CostPrice, ProductPrice, SellingPrice, 
-                             WholesalePrice, ManufactureDate, ExpiryDate)
+                            (GRNId, ProductId, BatchNumber, Quantity, CostPrice, ProductPrice, 
+                             ManufactureDate, ExpiryDate)
                             VALUES 
-                            (@GRNId, @ProductId, @BatchNumber, @Quantity, @CostPrice, @ProductPrice, @SellingPrice, 
-                             @WholesalePrice, @ManufactureDate, @ExpiryDate)";
+                            (@GRNId, @ProductId, @BatchNumber, @Quantity, @CostPrice, @ProductPrice,
+                             @ManufactureDate, @ExpiryDate)";
 
             using var connection = _context.CreateConnection();
             connection.Open();
@@ -52,8 +52,6 @@ namespace POS.Infrastructure.Repositories
                         item.Quantity,
                         item.CostPrice,
                         item.ProductPrice,
-                        item.SellingPrice,
-                        item.WholesalePrice,
                         item.ManufactureDate,
                         item.ExpiryDate
                     }, transaction);

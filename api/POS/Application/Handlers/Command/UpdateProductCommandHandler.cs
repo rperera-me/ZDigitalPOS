@@ -11,7 +11,6 @@ namespace POS.Application.Handlers.Command
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICategoryRepository _categoryRepository;
-        private readonly ISupplierRepository _supplierRepository;
 
         public UpdateProductCommandHandler(
             IProductRepository productRepository,
@@ -22,7 +21,6 @@ namespace POS.Application.Handlers.Command
             _productRepository = productRepository;
             _batchRepository = batchRepository;
             _categoryRepository = categoryRepository;
-            _supplierRepository = supplierRepository;
         }
 
         public async Task<ProductDto> Handle(UpdateProductCommand request, CancellationToken cancellationToken)
@@ -39,9 +37,6 @@ namespace POS.Application.Handlers.Command
 
             // Fetch names for DTO
             var category = await _categoryRepository.GetByIdAsync(updated.CategoryId);
-            var supplier = updated.DefaultSupplierId.HasValue
-                ? await _supplierRepository.GetByIdAsync(updated.DefaultSupplierId.Value)
-                : null;
 
             // ✅ Get batches to calculate price ranges
             var batches = await _batchRepository.GetActiveBatchesByProductIdAsync(updated.Id);
@@ -53,8 +48,6 @@ namespace POS.Application.Handlers.Command
                 Name = updated.Name,
                 CategoryId = updated.CategoryId,
                 CategoryName = category?.Name ?? "",
-                DefaultSupplierId = updated.DefaultSupplierId,
-                DefaultSupplierName = supplier?.Name,
                 StockQuantity = updated.StockQuantity,
                 HasMultipleProductPrices = updated.HasMultipleProductPrices
             };

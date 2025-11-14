@@ -7,7 +7,7 @@
         public string? Phone { get; set; }
         public string? Address { get; set; }
         public string? NICNumber { get; set; }
-        public string Type { get; set; } = "walk-in"; // walk-in, loyalty, wholesale
+        public string Type { get; set; } = "loyalty";
         public decimal CreditBalance { get; set; }
         public int LoyaltyPoints { get; set; } = 0;
     }

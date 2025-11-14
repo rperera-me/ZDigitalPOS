@@ -12,7 +12,7 @@
         public decimal WholesalePrice { get; set; }
         public int Quantity { get; set; }
         public int RemainingQuantity { get; set; }
-        public DateTime ManufactureDate { get; set; }
+        public DateTime? ManufactureDate { get; set; }
         public DateTime? ExpiryDate { get; set; }
         public DateTime ReceivedDate { get; set; } = DateTime.Now;
         public int? GRNId { get; set; }

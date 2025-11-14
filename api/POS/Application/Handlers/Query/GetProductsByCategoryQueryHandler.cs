@@ -11,7 +11,6 @@ namespace POS.Application.Handlers.Query
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICategoryRepository _categoryRepository;
-        private readonly ISupplierRepository _supplierRepository;
 
         public GetProductsByCategoryQueryHandler(
             IProductRepository productRepository,
@@ -22,7 +21,6 @@ namespace POS.Application.Handlers.Query
             _productRepository = productRepository;
             _batchRepository = batchRepository;
             _categoryRepository = categoryRepository;
-            _supplierRepository = supplierRepository;
         }
 
         public async Task<IEnumerable<ProductDto>> Handle(GetProductsByCategoryQuery request, CancellationToken cancellationToken)
@@ -34,13 +32,6 @@ namespace POS.Application.Handlers.Query
             {
                 var category = await _categoryRepository.GetByIdAsync(product.CategoryId);
 
-                string? supplierName = null;
-                if (product.DefaultSupplierId.HasValue)
-                {
-                    var supplier = await _supplierRepository.GetByIdAsync(product.DefaultSupplierId.Value);
-                    supplierName = supplier?.Name;
-                }
-
                 // ✅ Get active batches to calculate price ranges
                 var batches = await _batchRepository.GetActiveBatchesByProductIdAsync(product.Id);
 
@@ -51,8 +42,6 @@ namespace POS.Application.Handlers.Query
                     Name = product.Name,
                     CategoryId = product.CategoryId,
                     CategoryName = category?.Name ?? "",
-                    DefaultSupplierId = product.DefaultSupplierId,
-                    DefaultSupplierName = supplierName,
                     StockQuantity = product.StockQuantity,
                     HasMultipleProductPrices = product.HasMultipleProductPrices
                 };

@@ -11,8 +11,7 @@ namespace PosSystem.Domain.Entities
         public bool IsHeld { get; set; }
         public decimal TotalAmount { get; set; }
 
-        // Discount fields
-        public string? DiscountType { get; set; } // percentage, amount
+        public string? DiscountType { get; set; }
         public decimal? DiscountValue { get; set; }
         public decimal? DiscountAmount { get; set; }
         public decimal? FinalAmount { get; set; }
@@ -20,7 +19,7 @@ namespace PosSystem.Domain.Entities
         public List<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
         public List<Payment> Payments { get; set; } = new List<Payment>();
 
-        public string PaymentType { get; set; } = string.Empty; // Cash, Card, Credit, Mixed
+        public string PaymentType { get; set; } = string.Empty;
         public decimal AmountPaid { get; set; }
         public decimal Change { get; set; }
     }

@@ -13,7 +13,6 @@ namespace POS.Application.Handlers.Command
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICategoryRepository _categoryRepository;
-        private readonly ISupplierRepository _supplierRepository;
 
         public CreateProductCommandHandler(
             IProductRepository productRepository,
@@ -24,17 +23,30 @@ namespace POS.Application.Handlers.Command
             _productRepository = productRepository;
             _batchRepository = batchRepository;
             _categoryRepository = categoryRepository;
-            _supplierRepository = supplierRepository;
         }
 
         public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)
         {
+            if (request.StockQuantity > 0)
+            {
+                if (!request.CostPrice.HasValue || request.CostPrice.Value < 0)
+                    throw new ArgumentException("Cost price must be >= 0 when stock quantity > 0");
+
+                if (!request.ProductPrice.HasValue || request.ProductPrice.Value < 0)
+                    throw new ArgumentException("Product price (MRP) must be >= 0 when stock quantity > 0");
+
+                if (!request.SellingPrice.HasValue || request.SellingPrice.Value < 0)
+                    throw new ArgumentException("Selling price must be >= 0 when stock quantity > 0");
+
+                if (!request.WholesalePrice.HasValue || request.WholesalePrice.Value < 0)
+                    throw new ArgumentException("Wholesale price must be >= 0 when stock quantity > 0");
+            }
+
             var entity = new Product
             {
                 Barcode = request.Barcode,
                 Name = request.Name,
                 CategoryId = request.CategoryId,
-                DefaultSupplierId = request.DefaultSupplierId,
                 StockQuantity = request.StockQuantity,
                 HasMultipleProductPrices = false
             };
@@ -47,8 +59,8 @@ namespace POS.Application.Handlers.Command
                 var batch = new ProductBatch
                 {
                     ProductId = created.Id,
-                    BatchNumber = request.BatchNumber ?? "INITIAL",
-                    SupplierId = request.DefaultSupplierId ?? 0,
+                    BatchNumber = "INITIAL",
+                    SupplierId = 0,
                     CostPrice = request.CostPrice ?? 0,
                     ProductPrice = request.ProductPrice.Value,
                     SellingPrice = request.SellingPrice ?? request.ProductPrice.Value,
@@ -66,10 +78,6 @@ namespace POS.Application.Handlers.Command
 
             // Fetch names for DTO
             var category = await _categoryRepository.GetByIdAsync(created.CategoryId);
-            var supplier = request.DefaultSupplierId.HasValue
-                ? await _supplierRepository.GetByIdAsync(request.DefaultSupplierId.Value)
-                : null;
-
             // ✅ Get batches to calculate price ranges
             var batches = await _batchRepository.GetActiveBatchesByProductIdAsync(created.Id);
 
@@ -80,8 +88,6 @@ namespace POS.Application.Handlers.Command
                 Name = created.Name,
                 CategoryId = created.CategoryId,
                 CategoryName = category?.Name ?? "",
-                DefaultSupplierId = created.DefaultSupplierId,
-                DefaultSupplierName = supplier?.Name,
                 StockQuantity = created.StockQuantity,
                 HasMultipleProductPrices = created.HasMultipleProductPrices
             };
