@@ -4,3 +4,5 @@ export { default as HeldSalesModal } from './HeldSalesModal';
 export { default as PriceSelectionModal } from './PriceSelectionModal';
 export { default as ReceiptModal } from './ReceiptPreviewModal';
 export { default as AddCustomerModal } from './AddCustomerModal';
+export { default as ProductUpdateModal } from './ProductUpdateModal';
+export { default as ViewGRNModal } from './ViewGRNModal';

@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
-import { setCategories, setProducts} from "../app/posSlice";
+import { setCategories, setProducts } from "../app/posSlice";
+import { ProductUpdateModal } from "../components/modals";
 
 export default function AdminProductsPage() {
   const dispatch = useDispatch();
   const products = useSelector((state) => state.pos.products);
   const categories = useSelector((state) => state.pos.categories);
-
-  // ✅ ALL STATE VARIABLES - Including batchNumber
   const [name, setName] = useState("");
   const [barcode, setBarcode] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -26,10 +25,8 @@ export default function AdminProductsPage() {
   const [viewingStockByPrice, setViewingStockByPrice] = useState(null);
   const [priceBreakdown, setPriceBreakdown] = useState([]);
 
-  useEffect(() => {
-    api.get("/category").then((res) => dispatch(setCategories(res.data)));
-    api.get("/product").then((res) => dispatch(setProducts(res.data)));
-  }, [dispatch]);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const generateBarcode = () => {
     const randomBarcode = "CODE" + Date.now().toString().slice(-10);
@@ -115,6 +112,20 @@ export default function AdminProductsPage() {
     if (!max || min === max) return `Rs ${min?.toFixed(2) || '0.00'}`;
     return `Rs ${min?.toFixed(2)} - ${max?.toFixed(2)}`;
   };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setShowUpdateModal(true);
+  };
+
+  const handleProductUpdated = () => {
+    api.get("/product").then((res) => dispatch(setProducts(res.data)));
+  };
+
+  useEffect(() => {
+    api.get("/category").then((res) => dispatch(setCategories(res.data)));
+    api.get("/product").then((res) => dispatch(setProducts(res.data)));
+  }, [dispatch]);
 
   return (
     <div className="p-8">
@@ -243,7 +254,6 @@ export default function AdminProductsPage() {
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
                   Cost Price <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 block">Your purchase price</span>
                 </label>
                 <input
                   type="number"
@@ -436,12 +446,26 @@ export default function AdminProductsPage() {
                     </td>
 
                     <td className="p-3 text-center">
-                      <button
-                        onClick={() => viewStockByPrice(p)}
-                        className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm font-semibold"
-                      >
-                        View Details
-                      </button>
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={() => handleEditProduct(p)}
+                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-sm font-semibold flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => viewStockByPrice(p)}
+                          className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm font-semibold flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -510,6 +534,18 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+      
+      {/* Product Update Modal */}
+      <ProductUpdateModal
+        isOpen={showUpdateModal}
+        onClose={() => {
+          setShowUpdateModal(false);
+          setEditingProduct(null);
+        }}
+        product={editingProduct}
+        categories={categories}
+        onProductUpdated={handleProductUpdated}
+      />
     </div>
   );
 }

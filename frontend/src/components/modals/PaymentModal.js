@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 
 export default function PaymentModal({
   isOpen,
@@ -21,6 +21,9 @@ export default function PaymentModal({
   const [discountValue, setDiscountValue] = useState("");
 
   const [activeTab, setActiveTab] = useState('cash');
+  
+  // ✅ NEW STATE: Track if credit button was clicked
+  const [isCreditAdded, setIsCreditAdded] = useState(false);
 
   // Calculate discount amount
   const discountAmount = useMemo(() => {
@@ -56,26 +59,12 @@ export default function PaymentModal({
     };
   }, [cashAmount, cardAmount, creditAmount, totalAfterDiscount]);
 
-  // Auto-calculate credit amount when credit tab is active and customer is selected
-  useEffect(() => {
-    if (activeTab === 'credit' && creditCustomer) {
-      const remaining = totalAfterDiscount - cashPaid - cardPaid;
-      if (remaining > 0) {
-        setCreditAmount(remaining.toFixed(2));
-      }
-    }
-  }, [activeTab, creditCustomer, totalAfterDiscount, cashPaid, cardPaid]);
+  // ✅ REMOVED: Auto-calculate credit - now manual only
 
   // Sync credit customer with current customer from sale
   useEffect(() => {
     if (isOpen && currentCustomer && (customerType === "loyalty" || customerType === "wholesale")) {
-      console.log("🔄 Syncing customer to payment modal:", currentCustomer); // ✅ Debug log
       setCreditCustomer(currentCustomer);
-
-      // Auto-switch to credit tab if customer has credit or if credit payment makes sense
-      if (currentCustomer.creditBalance > 0 || customerType === "loyalty" || customerType === "wholesale") {
-        setActiveTab('credit');
-      }
     }
   }, [isOpen, currentCustomer, customerType]);
 
@@ -86,6 +75,7 @@ export default function PaymentModal({
       setCardAmount("");
       setCardLastFour("");
       setCreditAmount("");
+      setIsCreditAdded(false); // ✅ Reset credit added state
       if (customerType !== "walk-in" && currentCustomer) {
         setCreditCustomer(currentCustomer);
       } else {
@@ -123,6 +113,29 @@ export default function PaymentModal({
     const currentAmount = parseFloat(cashAmount) || 0;
     setCashAmount((currentAmount + amount).toString());
   }, [cashAmount]);
+
+  // ✅ NEW FUNCTION: Add Credit to Payment
+  const handleAddCredit = () => {
+    // Check if card payment already has value
+    if (cardPaid > 0) {
+      alert("Cannot add credit when card payment is already filled. Please clear card amount first.");
+      return;
+    }
+
+    const remaining = totalAfterDiscount - cashPaid - cardPaid;
+    if (remaining > 0) {
+      setCreditAmount(remaining.toFixed(2));
+      setIsCreditAdded(true);
+    } else {
+      alert("Payment already covered. No need for credit.");
+    }
+  };
+
+  // ✅ NEW FUNCTION: Clear Credit
+  const handleClearCredit = () => {
+    setCreditAmount("");
+    setIsCreditAdded(false);
+  };
 
   if (!isOpen) return null;
 
@@ -198,7 +211,6 @@ export default function PaymentModal({
         <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
           <div className="flex justify-between items-center">
             {discountAmount > 0 ? (
-              // Show Subtotal and Discount when discount is applied
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <div className="text-xs text-gray-600">Subtotal</div>
@@ -210,7 +222,6 @@ export default function PaymentModal({
                 </div>
               </div>
             ) : (
-              // Empty div to maintain layout when no discount
               <div></div>
             )}
             <div className="text-right">
@@ -241,7 +252,6 @@ export default function PaymentModal({
             >
               💳 Card
             </button>
-            {/* ✅ ONLY SHOW CREDIT TAB IF NOT WALK-IN */}
             {customerType !== "walk-in" && (
               <button
                 onClick={() => setActiveTab('credit')}
@@ -282,7 +292,6 @@ export default function PaymentModal({
                 autoComplete="off"
                 autoFocus
               />
-              {/* Quick Cash Amount Tiles */}
               <div className="grid grid-cols-5 gap-2">
                 {[50, 100, 500, 1000, 5000].map((amount) => (
                   <button
@@ -332,7 +341,6 @@ export default function PaymentModal({
           {/* Credit Tab */}
           {activeTab === 'credit' && customerType !== "walk-in" && (
             <div className="space-y-3">
-              {/* Customer Selection - Auto-filled if customer already selected */}
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
                   {customerType === "loyalty" ? "Loyalty" : "Wholesale"} Customer
@@ -341,7 +349,7 @@ export default function PaymentModal({
                   value={creditCustomer?.id || ""}
                   onChange={handleCreditCustomerChange}
                   className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-orange-500"
-                  disabled={!!currentCustomer} // ✅ Disable if customer already selected from sale
+                  disabled={!!currentCustomer}
                 >
                   <option value="">-- Select Customer --</option>
                   {filteredCustomers.map((cust) => (
@@ -350,16 +358,10 @@ export default function PaymentModal({
                     </option>
                   ))}
                 </select>
-                {currentCustomer && (
-                  <p className="text-xs text-green-600 mt-1">
-                    ✓ Customer auto-loaded from sale
-                  </p>
-                )}
               </div>
 
               {creditCustomer && (
                 <>
-                  {/* Customer Summary */}
                   <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-200 rounded-lg p-3">
                     <h4 className="font-semibold text-orange-900 mb-2 text-sm">Customer Summary</h4>
                     <div className="space-y-1 text-sm">
@@ -386,33 +388,64 @@ export default function PaymentModal({
                     </div>
                   </div>
 
-                  {/* Credit Amount */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Credit Amount</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={creditAmount}
-                      readOnly
-                      className="w-full border-2 border-orange-300 rounded-lg p-3 text-lg bg-orange-50 font-bold text-orange-600"
-                      placeholder="Auto-calculated"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      * Credit amount is automatically calculated based on remaining payment
-                    </p>
-                  </div>
-
-                  {/* New Balance Preview */}
-                  {creditPaid > 0 && (
-                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-700">New Credit Balance:</span>
-                        <span className="text-lg font-bold text-red-600">
-                          Rs {((creditCustomer.creditBalance || 0) + creditPaid).toFixed(2)}
-                        </span>
-                      </div>
+                  {/* ✅ UPDATED: Add Credit Button Logic */}
+                  {!isCreditAdded ? (
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-800 mb-3">
+                        Remaining amount to pay: <span className="font-bold">Rs {(totalAfterDiscount - cashPaid - cardPaid).toFixed(2)}</span>
+                      </p>
+                      <button
+                        onClick={handleAddCredit}
+                        disabled={cardPaid > 0 || (totalAfterDiscount - cashPaid - cardPaid) <= 0}
+                        className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Credit to Payment
+                      </button>
+                      {cardPaid > 0 && (
+                        <p className="text-xs text-red-600 mt-2 text-center">
+                          ⚠️ Cannot add credit when card payment is filled
+                        </p>
+                      )}
                     </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Credit Amount</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={creditAmount}
+                          readOnly
+                          className="w-full border-2 border-orange-300 rounded-lg p-3 text-lg bg-orange-50 font-bold text-orange-600"
+                          placeholder="Credit amount"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleClearCredit}
+                        className="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition font-semibold flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Clear Credit
+                      </button>
+
+                      {creditPaid > 0 && (
+                        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-700">New Credit Balance:</span>
+                            <span className="text-lg font-bold text-red-600">
+                              Rs {((creditCustomer.creditBalance || 0) + creditPaid).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -497,9 +530,8 @@ export default function PaymentModal({
           </div>
         </div>
 
-        {/* Footer with Balance and Action Buttons */}
+        {/* Footer */}
         <div className="border-t-2 border-gray-200 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 p-4">
-          {/* Balance Display */}
           <div className={`rounded-lg p-3 mb-3 border-2 ${totalPaid >= totalAfterDiscount
             ? 'bg-white border-green-600'
             : 'bg-white border-red-600'
@@ -516,7 +548,6 @@ export default function PaymentModal({
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-2">
             <button
               type="button"
@@ -543,6 +574,6 @@ export default function PaymentModal({
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 }

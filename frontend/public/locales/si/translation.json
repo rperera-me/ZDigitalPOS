@@ -1,14 +1,37 @@
 {
   "receipt": {
-    "title": "[translate:බිල්පත]",
-    "item": "[translate:අයිතමය]",
-    "qty": "[translate:ප්‍රමාණය]",
-    "price": "[translate:මිල]",
-    "total": "[translate:මුළු මුදල]",
-    "paymentType": "[translate:ගෙවීමේ ප්‍රකාරය]",
-    "amountPaid": "[translate:ගෙවූ මුදල]",
-    "change": "[translate:ආපසු දෙන මුදල]",
-    "thankYou": "[translate:ඔබට ස්තුතියි]",
-    "close": "[translate:අවසන් කරන්න]"
+    "title": "බිල්පත",
+    "invoiceNo": "ඉන්වොයිස් අංකය",
+    "cashier": "අයකැමි",
+    "date": "දිනය",
+    "customer": "ගනුදෙනුකරු",
+    "phone": "දුරකථන",
+    "item": "භාණ්ඩය",
+    "qty": "ප්‍රමාණය",
+    "price": "මිල",
+    "ourPrice": "අපේ මිල",
+    "amount": "එකතුව",
+    "netTotal": "මුළු එකතුව",
+    "discount": "වට්ටම",
+    "finalTotal": "මුළු එකතුව",
+    "paidAmount": "ගෙවූ මුදල",
+    "balance": "ඉතිරිය",
+    "youSaved": "ඔබ ලැබූ ලාභය",
+    "loyaltyPoints": "පොයින්ට්",
+    "pointsEarned": "ලැබූ පොයින්ට්",
+    "credit": "ගෙවිය යුතු ණය",
+    "creditNote": "ණය නිසා පොයින්ට් නවතා ඇත",
+    "thankYou": "ඔබට ස්තුතියි!",
+    "loyaltyNote": "රු.100 කට 1 පොයින්ට් ලැබේ",
+    "poweredBy": "මෘදුකාංග ZDigital Solutions විසින්"
+  },
+  "ui": {
+    "login": "පිවිසෙන්න",
+    "logout": "ඉවත් වන්න",
+    "admin": "පරිපාලක",
+    "cashier": "අයකැමි",
+    "printReceipt": "බිල්පත මුද්‍රණය",
+    "languageToggle": "භාෂාව",
+    "close": "ඉවත් වන්න"
   }
 }

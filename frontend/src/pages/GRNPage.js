@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
 import { setSuppliers, setProducts, setCategories } from "../app/posSlice";
+import { ViewGRNModal } from "../components/modals";
 
 export default function GRNPage() {
     const dispatch = useDispatch();
@@ -18,12 +19,9 @@ export default function GRNPage() {
     // Item form
     const [selectedProductId, setSelectedProductId] = useState("");
     const [barcodeInput, setBarcodeInput] = useState("");
-    const [batchNumber, setBatchNumber] = useState(""); // Optional now
     const [quantity, setQuantity] = useState("");
     const [costPrice, setCostPrice] = useState("");
     const [productPrice, setProductPrice] = useState("");
-    const [sellingPrice, setSellingPrice] = useState("");
-    const [wholesalePrice, setWholesalePrice] = useState("");
     const [manufactureDate, setManufactureDate] = useState("");
     const [expiryDate, setExpiryDate] = useState("");
 
@@ -33,12 +31,13 @@ export default function GRNPage() {
     const [newProductBarcode, setNewProductBarcode] = useState("");
     const [newProductCategory, setNewProductCategory] = useState("");
 
-    useEffect(() => {
-        api.get("/supplier").then((res) => dispatch(setSuppliers(res.data)));
-        api.get("/product").then((res) => dispatch(setProducts(res.data)));
-        api.get("/category").then((res) => dispatch(setCategories(res.data)));
-        fetchGRNs();
-    }, [dispatch]);
+    const [viewingGRN, setViewingGRN] = useState(null);
+    const [showViewModal, setShowViewModal] = useState(false);
+
+    const handleViewGRN = (grn) => {
+        setViewingGRN(grn);
+        setShowViewModal(true);
+    };
 
     const fetchGRNs = () => {
         api.get("/grn").then((res) => setGrns(res.data));
@@ -52,14 +51,6 @@ export default function GRNPage() {
                 if (res.data) {
                     setSelectedProductId(res.data.id.toString());
                     setBarcodeInput("");
-
-                    // ✅ Use min prices from batch data if available
-                    if (res.data.minWholesalePrice) {
-                        setWholesalePrice(res.data.minWholesalePrice.toString());
-                    }
-                    if (res.data.minSellingPrice) {
-                        setSellingPrice(res.data.minSellingPrice.toString());
-                    }
                 } else {
                     alert("Product not found with this barcode");
                 }
@@ -67,30 +58,20 @@ export default function GRNPage() {
             .catch(() => alert("Error searching for product"));
     };
 
-    const generateBatchNumber = () => {
-        return "BATCH" + Date.now().toString().slice(-8);
-    };
-
     const addItem = () => {
-        if (!selectedProductId || !quantity || !costPrice || !productPrice || !sellingPrice) {
-            alert("Please fill all required fields (Product, Qty, Cost, Product Price, Selling Price)");
+        if (!selectedProductId || !quantity || !costPrice || !productPrice) {
+            alert("Please fill all required fields (Product, Qty, Cost Price, Product Price)");
             return;
         }
 
         const product = products.find((p) => p.id === parseInt(selectedProductId));
 
-        // Generate batch number if not provided
-        const finalBatchNumber = batchNumber || generateBatchNumber();
-
         const newItem = {
             productId: parseInt(selectedProductId),
             productName: product?.name || "",
-            batchNumber: finalBatchNumber,
             quantity: parseInt(quantity),
             costPrice: parseFloat(costPrice),
             productPrice: parseFloat(productPrice),
-            sellingPrice: parseFloat(sellingPrice),
-            wholesalePrice: parseFloat(wholesalePrice) || parseFloat(sellingPrice),
             manufactureDate: manufactureDate || null,
             expiryDate: expiryDate || null,
         };
@@ -99,12 +80,9 @@ export default function GRNPage() {
 
         // Reset form
         setSelectedProductId("");
-        setBatchNumber("");
         setQuantity("");
         setCostPrice("");
         setProductPrice("");
-        setSellingPrice("");
-        setWholesalePrice("");
         setManufactureDate("");
         setExpiryDate("");
     };
@@ -155,9 +133,7 @@ export default function GRNPage() {
             name: newProductName,
             barcode: newProductBarcode,
             categoryId: parseInt(newProductCategory),
-            stockQuantity: 0,
-            priceRetail: 0,
-            priceWholesale: 0,
+            stockQuantity: 0
         };
 
         api.post("/product", productData)
@@ -174,6 +150,13 @@ export default function GRNPage() {
     };
 
     const totalAmount = items.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
+
+    useEffect(() => {
+        api.get("/supplier").then((res) => dispatch(setSuppliers(res.data)));
+        api.get("/product").then((res) => dispatch(setProducts(res.data)));
+        api.get("/category").then((res) => dispatch(setCategories(res.data)));
+        fetchGRNs();
+    }, [dispatch]);
 
     return (
         <div className="p-8">
@@ -288,19 +271,6 @@ export default function GRNPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">
-                                    Batch Number (Optional)
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Auto-generated if empty"
-                                    value={batchNumber}
-                                    onChange={(e) => setBatchNumber(e.target.value)}
-                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                                />
-                            </div>
-
-                            <div>
                                 <label className="block text-sm font-medium mb-1 text-gray-700">Quantity *</label>
                                 <input
                                     type="number"
@@ -337,36 +307,6 @@ export default function GRNPage() {
                                     value={productPrice}
                                     onChange={(e) => setProductPrice(e.target.value)}
                                     className="w-full border-2 border-yellow-300 rounded-lg p-2 focus:outline-none focus:border-yellow-500 bg-yellow-50"
-                                    step="0.01"
-                                    min="0"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">
-                                    Selling Price (Retail) *
-                                </label>
-                                <input
-                                    type="number"
-                                    placeholder="Selling Price"
-                                    value={sellingPrice}
-                                    onChange={(e) => setSellingPrice(e.target.value)}
-                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                                    step="0.01"
-                                    min="0"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">
-                                    Wholesale Price
-                                </label>
-                                <input
-                                    type="number"
-                                    placeholder="Wholesale Price"
-                                    value={wholesalePrice}
-                                    onChange={(e) => setWholesalePrice(e.target.value)}
-                                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
                                     step="0.01"
                                     min="0"
                                 />
@@ -412,12 +352,9 @@ export default function GRNPage() {
                                         <thead className="bg-gray-100">
                                             <tr>
                                                 <th className="p-2 text-left font-semibold">Product</th>
-                                                <th className="p-2 text-left font-semibold">Batch</th>
                                                 <th className="p-2 text-center font-semibold">Qty</th>
                                                 <th className="p-2 text-right font-semibold">Cost</th>
                                                 <th className="p-2 text-right font-semibold">MRP</th>
-                                                <th className="p-2 text-right font-semibold">Retail</th>
-                                                <th className="p-2 text-right font-semibold">Wholesale</th>
                                                 <th className="p-2 text-right font-semibold">Total Cost</th>
                                                 <th className="p-2 text-center font-semibold">Action</th>
                                             </tr>
@@ -426,17 +363,10 @@ export default function GRNPage() {
                                             {items.map((item, index) => (
                                                 <tr key={index} className="border-t hover:bg-gray-50">
                                                     <td className="p-2">{item.productName}</td>
-                                                    <td className="p-2 font-mono text-xs">{item.batchNumber}</td>
                                                     <td className="p-2 text-center font-semibold">{item.quantity}</td>
                                                     <td className="p-2 text-right">Rs {item.costPrice.toFixed(2)}</td>
                                                     <td className="p-2 text-right text-yellow-600 font-semibold">
                                                         Rs {item.productPrice.toFixed(2)}
-                                                    </td>
-                                                    <td className="p-2 text-right text-green-600">
-                                                        Rs {item.sellingPrice.toFixed(2)}
-                                                    </td>
-                                                    <td className="p-2 text-right text-purple-600">
-                                                        Rs {item.wholesalePrice.toFixed(2)}
                                                     </td>
                                                     <td className="p-2 text-right font-semibold text-orange-600">
                                                         Rs {(item.costPrice * item.quantity).toFixed(2)}
@@ -512,6 +442,16 @@ export default function GRNPage() {
                                                 </span>
                                             </div>
                                         </div>
+                                        <button
+                                            onClick={() => handleViewGRN(grn)}
+                                            className="w-full mt-3 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-semibold flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            View Details
+                                        </button>
                                     </div>
                                 ))
                             )}
@@ -593,6 +533,16 @@ export default function GRNPage() {
                     </div>
                 </div>
             )}
+
+            {/* GRN View Modal */}
+            <ViewGRNModal
+                isOpen={showViewModal}
+                onClose={() => {
+                    setShowViewModal(false);
+                    setViewingGRN(null);
+                }}
+                grn={viewingGRN}
+            />
         </div>
     );
 }

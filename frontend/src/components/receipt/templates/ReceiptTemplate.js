@@ -3,78 +3,91 @@ export const receiptTemplate = `
   <div class="receipt-header">
     <img src="logo192.png" alt="Store Logo" class="store-logo" />
     <h2 class="store-name">{{storeName}}</h2>
+    <p class="store-address">{{storeAddress}}</p>
+    <p class="store-contact">{{storeContact}}</p>
   </div>
 
   <div class="receipt-info">
-    <p><strong>Date:</strong> {{date}}</p>
-    <p><strong>Cashier:</strong> {{cashier}}</p>
+    <p><strong>{{i18n "receipt.invoiceNo"}}:</strong> {{invoiceNo}}</p>
+    <p><strong>{{i18n "receipt.cashier"}}:</strong> {{cashier}}</p>
+    <p><strong>{{i18n "receipt.date"}}:</strong> {{date}}</p>
     {{#if customer}}
-    <p><strong>Customer:</strong> {{customer.name}}</p>
+    <p><strong>{{i18n "receipt.customer"}}:</strong> {{customer.name}}</p>
     {{#if customer.phone}}
-    <p><strong>Phone:</strong> {{customer.phone}}</p>
+    <p><strong>{{i18n "receipt.phone"}}:</strong> {{customer.phone}}</p>
     {{/if}}
     {{/if}}
   </div>
-
-  <hr class="divider"/>
 
   <table class="items-table">
     <thead>
       <tr>
-        <th style="text-align:left;">Item</th>
-        <th style="text-align:center;">Qty</th>
-        <th style="text-align:right;">Price</th>
+        <th style="text-align:left;">{{i18n "receipt.qty"}}</th>
+        <th style="text-align:left;">{{i18n "receipt.price"}}</th>
+        <th style="text-align:center;">{{i18n "receipt.ourPrice"}}</th>
+        <th style="text-align:right;">{{i18n "receipt.amount"}}</th>
       </tr>
     </thead>
     <tbody>
-      {{#each items}}
+    {{#each items}}
       <tr>
-        <td style="text-align: left;">{{name}}</td>
-        <td style="text-align: center;">{{quantity}}</td>
-        <td style="text-align: right;">Rs {{price}}</td>
+        <td colspan="4" style="text-align: left;">{{name}}</td>
       </tr>
+      <tr>
+        <td style="text-align: left;">{{quantity}}</td>
+        <td style="text-align: left;">{{formatCurrency regularPrice}}</td>
+        <td style="text-align: center;">{{formatCurrency price}}</td>
+        <td style="text-align: right;">{{formatCurrency total}}</td>
+      </tr>
+      {{#unless @last}}
+        <tr class="item-separator">
+          <td colspan="4"></td>
+        </tr>
+    {{/unless}}
       {{/each}}
     </tbody>
   </table>
 
-  <hr class="divider"/>
-
-  {{#if discountAmount}}
-  <div class="discount-section">
-    <p><strong>Discount:</strong> {{discountType}} {{discountValue}}</p>
-    <p><strong>Discount Amount:</strong> Rs {{discountAmount}}</p>
-  </div>
-  {{/if}}
-
-  <div class="total-section">
-    <p class="total"><strong>Final Total:</strong> Rs {{finalAmount}}</p>
-  </div>
-
-  <div class="payment-info">
-    <p><strong>Payment Methods:</strong></p>
-    {{#each payments}}
-    <p>{{type}}: Rs {{amount}}{{#if cardLastFour}} (****{{cardLastFour}}){{/if}}</p>
-    {{/each}}
-    {{#if change}}
-    <p><strong>Change:</strong> Rs {{change}}</p>
-    {{/if}}
+  <div class="totals-section">
+    <div class="total-row">
+      <span>{{i18n "receipt.netTotal"}}:</span>
+      <span class="amount">{{formatCurrency totalAmount}}</span>
+    </div>
+    <div class="total-row">
+      <span>{{i18n "receipt.discount"}}:</span>
+      <span class="amount">-{{formatCurrency discountAmount}}</span>
+    </div>
+    <div class="total-row final-total">
+      <span><strong>{{i18n "receipt.finalTotal"}}:</strong></span>
+      <span class="amount"><strong>{{formatCurrency finalAmount}}</strong></span>
+    </div>
+    <div class="total-row">
+      <span>{{i18n "receipt.paidAmount"}}:</span>
+      <span class="amount">{{formatCurrency totalPaid}}</span>
+    </div>
+    <div class="total-row">
+      <span>{{i18n "receipt.balance"}}:</span>
+      <span class="amount">{{formatCurrency change}}</span>
+    </div>
+    <div class="savings-section">
+      <p><strong>{{i18n "receipt.youSaved"}}: {{formatCurrency savings}}</strong></p>
+    </div>
   </div>
 
   {{#if customer}}
   {{#if customer.type}}
   {{#if (eq customer.type "loyalty")}}
   <hr class="divider"/>
-  <div class="loyalty-info" style="text-align: center; background: #f3e8ff; padding: 8px; border-radius: 6px; margin: 8px 0;">
+  <div class="loyalty-info">
     {{#if customer.loyaltyPoints}}
-    <p style="margin: 2px 0; font-weight: bold; color: #7c3aed;">💜 Loyalty Points: {{customer.loyaltyPoints}} pts</p>
+    <p>💜 {{i18n "receipt.loyaltyPoints"}}: {{customer.loyaltyPoints}} pts</p>
     {{/if}}
     {{#if pointsEarned}}
-    <p style="margin: 2px 0; color: #059669; font-weight: bold;">✨ Points Earned: +{{pointsEarned}} pts</p>
+    <p>✨ {{i18n "receipt.pointsEarned"}}: +{{pointsEarned}} pts</p>
     {{/if}}
     {{#if customer.creditBalance}}
     {{#if (gt customer.creditBalance 0)}}
-    <p style="margin: 2px 0; color: #dc2626; font-weight: bold;">Credit: Rs {{customer.creditBalance}}</p>
-    <p style="margin: 2px 0; font-size: 10px; color: #6b7280;">Points paused until credit cleared</p>
+    <p class="credit-warning">{{i18n "receipt.credit"}}: {{formatCurrency customer.creditBalance}}</p>
     {{/if}}
     {{/if}}
   </div>
@@ -83,14 +96,11 @@ export const receiptTemplate = `
   {{/if}}
 
   <div class="thank-you">
-    <p>Thank you for your business!</p>
-    {{#if customer}}
-    {{#if customer.type}}
-    {{#if (eq customer.type "loyalty")}}
-    <p style="font-size: 10px; margin-top: 4px;">Earn 1 point per Rs.100 spent</p>
-    {{/if}}
-    {{/if}}
-    {{/if}}
+    <p>{{i18n "receipt.thankYou"}}</p>
+  </div>
+
+  <div class="footer">
+    <p>{{i18n "receipt.poweredBy"}}</p>
   </div>
 </div>
 `;

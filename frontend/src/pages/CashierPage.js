@@ -67,7 +67,7 @@ export default function CashierPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
 
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
-  const [addCustomerType, setAddCustomerType] = useState('loyalty');
+  const [addCustomerType, setAddCustomerType] = useState(customerType);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState("");
@@ -100,6 +100,58 @@ export default function CashierPage() {
   const getTotalItems = () =>
     saleItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  const fetchHoldSales = useCallback(() => {
+    api.get("/sale/held").then((res) => dispatch(setHoldSales(res.data)));
+  }, [dispatch]);
+
+  const handleBarcodeAdd = useCallback((barcode) => {
+    const code = barcode || barcodeInput.trim();
+    if (!code) return;
+
+    const quantity = parseInt(barcodeQuantity) || 1;
+    console.log("🔍 Barcode search:", code, "Quantity:", quantity);
+
+    api.get(`/product/barcode/${code}`)
+      .then((res) => {
+        if (res.data) {
+          console.log("✅ Product found:", res.data.name);
+          console.log("📊 HasMultipleProductPrices:", res.data.hasMultipleProductPrices);
+
+          if (res.data.hasMultipleProductPrices) {
+            onAddProduct(res.data);
+          } else {
+            const price = customerType === "wholesale"
+              ? (res.data.minWholesalePrice || res.data.minSellingPrice || 0)
+              : (res.data.minSellingPrice || 0);
+
+            addToCart(res.data, price, quantity, null);
+          }
+
+          if (!barcode) {
+            setBarcodeInput("");
+            setBarcodeQuantity(1);
+            setTimeout(() => {
+              document.getElementById('barcode-input')?.focus();
+            }, 100);
+          }
+        } else {
+          alert("Product not found.");
+        }
+      })
+      .catch(() => alert("Product not found."));
+  }, [barcodeInput, barcodeQuantity, customerType]);
+
+    const handleCustomerAdded = useCallback((newCustomer) => {
+    // Refresh customers list
+    api.get("/customer").then((res) => {
+      const filteredCustomers = res.data.filter(c => c.type !== "walk-in");
+      dispatch(setCustomers(filteredCustomers));
+
+      // Auto-select the newly added customer
+      dispatch(setCustomer(newCustomer));
+    });
+  }, [dispatch]);
+
   // Offline sync functionality (commented for future use)
   // useEffect(() => {
   //   function syncOfflineSales() {
@@ -124,10 +176,6 @@ export default function CashierPage() {
     // Electron's exposed API to send data to main process
     window.electronAPI.send("saveSale", salePayload);
   }
-
-  const fetchHoldSales = useCallback(() => {
-    api.get("/sale/held").then((res) => dispatch(setHoldSales(res.data)));
-  }, [dispatch]);
 
   function addToCart(product, price, quantity, sourceId = null) {
     console.log("🛒 Adding to cart:", {
@@ -225,43 +273,6 @@ export default function CashierPage() {
     dispatch(updateQuantity({ productId, sourceId, price, quantity }));
   }
 
-  const handleBarcodeAdd = useCallback((barcode) => {
-    const code = barcode || barcodeInput.trim();
-    if (!code) return;
-
-    const quantity = parseInt(barcodeQuantity) || 1;
-    console.log("🔍 Barcode search:", code, "Quantity:", quantity);
-
-    api.get(`/product/barcode/${code}`)
-      .then((res) => {
-        if (res.data) {
-          console.log("✅ Product found:", res.data.name);
-          console.log("📊 HasMultipleProductPrices:", res.data.hasMultipleProductPrices);
-
-          if (res.data.hasMultipleProductPrices) {
-            onAddProduct(res.data);
-          } else {
-            const price = customerType === "wholesale"
-              ? (res.data.minWholesalePrice || res.data.minSellingPrice || 0)
-              : (res.data.minSellingPrice || 0);
-
-            addToCart(res.data, price, quantity, null);
-          }
-
-          if (!barcode) {
-            setBarcodeInput("");
-            setBarcodeQuantity(1);
-            setTimeout(() => {
-              document.getElementById('barcode-input')?.focus();
-            }, 100);
-          }
-        } else {
-          alert("Product not found.");
-        }
-      })
-      .catch(() => alert("Product not found."));
-  }, [barcodeInput, barcodeQuantity, customerType]);
-
   function holdSale() {
     if (saleItems.length === 0) return alert("No items in sale.");
     const salePayload = {
@@ -345,6 +356,7 @@ export default function CashierPage() {
 
     if (isOnline()) {
       api.post("/sale", salePayload).then((response) => {
+        console.log(salePayload);
         // Update customer credit if credit payment was made
         if (paymentData.customer && paymentData.payments.some(p => p.type === "Credit")) {
           const creditPayment = paymentData.payments.find(p => p.type === "Credit");
@@ -434,17 +446,6 @@ export default function CashierPage() {
       alert("Error fetching last sale.");
     });
   }
-
-  const handleCustomerAdded = useCallback((newCustomer) => {
-    // Refresh customers list
-    api.get("/customer").then((res) => {
-      const filteredCustomers = res.data.filter(c => c.type !== "walk-in");
-      dispatch(setCustomers(filteredCustomers));
-
-      // Auto-select the newly added customer
-      dispatch(setCustomer(newCustomer));
-    });
-  }, [dispatch]);
 
   function handleLoadLastSale() {
     if (!lastSale) return;

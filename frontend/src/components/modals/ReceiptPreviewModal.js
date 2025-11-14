@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import Modal from "react-modal";
 import ReceiptView from "../receipt/ReceiptView";
+import LanguageToggle from "../LanguageToggle";
 import { useTranslation } from "react-i18next";
 import { useReactToPrint } from "react-to-print";
 
@@ -37,38 +38,68 @@ const ReceiptModal = forwardRef(({ isOpen, onClose, saleData }, ref) => {
       onRequestClose={onClose}
       contentLabel={t("receipt.title") || "Receipt"}
       style={{
-        overlay: { 
+        overlay: {
           backgroundColor: "rgba(0,0,0,0.6)",
-          zIndex: 1000 
+          zIndex: 1000
         },
         content: {
           width: "400px",
           maxHeight: "90vh",
           margin: "auto",
           borderRadius: "10px",
-          padding: "20px",
-          overflow: "auto",
+          padding: 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
-      <div style={{ textAlign: "center", fontFamily: "Arial" }}>
-        <h3 style={{ marginBottom: "15px" }}>
-          {t("receipt.preview") || "Receipt Preview"}
-        </h3>
-        
-        <div ref={ref} style={{ marginBottom: "20px" }}>
+      {/* Scrollable content area */}
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: "20px",
+      }}>
+        <div ref={ref}>
           <ReceiptView saleData={saleData} />
         </div>
+      </div>
 
-        <div style={{ 
-          display: "flex", 
-          gap: "10px", 
-          justifyContent: "center",
-          marginTop: "20px" 
-        }}>
+      {/* Fixed footer with buttons */}
+      <div style={{
+        position: "sticky",
+        bottom: 0,
+        backgroundColor: "#ffffff",
+        borderTop: "1px solid #e5e7eb",
+        padding: "15px 20px",
+        display: "flex",
+        gap: "10px",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow: "0 -2px 8px rgba(0, 0, 0, 0.05)",
+        zIndex: 10,
+      }}>
+        <LanguageToggle />
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={onClose}
+            style={{
+              backgroundColor: "#d1d5db",
+              padding: "10px 20px",
+              borderRadius: "6px",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: "500",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = "#9ca3af"}
+            onMouseLeave={(e) => e.target.style.backgroundColor = "#d1d5db"}
+          >
+            {t("ui.close") || "Close"}
+          </button>
           <button
             onClick={handlePrint}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             style={{
               backgroundColor: "#16a34a",
               color: "white",
@@ -77,23 +108,12 @@ const ReceiptModal = forwardRef(({ isOpen, onClose, saleData }, ref) => {
               border: "none",
               cursor: "pointer",
               fontWeight: "500",
+              transition: "background-color 0.2s",
             }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = "#15803d"}
+            onMouseLeave={(e) => e.target.style.backgroundColor = "#16a34a"}
           >
-            Print
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
-            style={{
-              backgroundColor: "#d1d5db",
-              padding: "10px 20px",
-              borderRadius: "6px",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: "500",
-            }}
-          >
-            Close
+            {t("ui.printReceipt") || "Print"}
           </button>
         </div>
       </div>

@@ -1,14 +1,37 @@
 {
-  "bill": {
+  "receipt": {
     "title": "Receipt",
-    "total": "Total Amount",
-    "change": "Change",
-    "thankYou": "Thank you!"
+    "invoiceNo": "Invoice No",
+    "cashier": "Cashier",
+    "date": "Date",
+    "customer": "Customer",
+    "phone": "Phone",
+    "item": "Item",
+    "qty": "QTY",
+    "price": "PRICE",
+    "ourPrice": "OUR PRICE",
+    "amount": "AMOUNT",
+    "netTotal": "Net Total",
+    "discount": "Discount",
+    "finalTotal": "Final Total",
+    "paidAmount": "Paid Amount",
+    "balance": "Balance",
+    "youSaved": "You Saved",
+    "loyaltyPoints": "Loyalty Points",
+    "pointsEarned": "Points Earned",
+    "credit": "Credit",
+    "creditNote": "Points paused until credit cleared",
+    "thankYou": "Thank you!",
+    "loyaltyNote": "Earn 1 point per Rs.100 spent",
+    "poweredBy": "Software by ZDigital Solutions"
   },
   "ui": {
     "login": "Login",
     "logout": "Logout",
     "admin": "Admin",
-    "cashier": "Cashier"
+    "cashier": "Cashier",
+    "printReceipt": "Print Receipt",
+    "languageToggle": "Language",
+    "close": "Close"
   }
 }
