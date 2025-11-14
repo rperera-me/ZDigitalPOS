@@ -156,5 +156,23 @@ namespace PosSystem.Controllers
             await _mediator.Send(new DeleteHeldSaleCommand { SaleId = saleId });
             return NoContent();
         }
+
+        [HttpPost("{id}/void")]
+        public async Task<IActionResult> VoidSale(int id)
+        {
+            try
+            {
+                await _mediator.Send(new VoidSaleCommand { SaleId = id });
+                return Ok(new { message = "Sale voided successfully" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

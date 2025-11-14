@@ -103,6 +103,7 @@ builder.Services.AddMediatR(cfg =>
         typeof(GetSalesByDateRangeQuery).Assembly,
         typeof(GetHeldSalesQuery).Assembly,
         typeof(GetSalesStatsQuery).Assembly,
+        typeof(VoidSaleCommand).Assembly,
 
         typeof(GetUserByIdQuery).Assembly,
         typeof(GetUserByUsernameQuery).Assembly,

@@ -114,7 +114,9 @@ namespace PosSystem.Infrastructure.Repositories
                                       FinalAmount = @FinalAmount,
                                       PaymentType = @PaymentType, 
                                       AmountPaid = @AmountPaid,
-                                      Change = @Change
+                                      Change = @Change,
+                                      IsVoided = @IsVoided,
+                                      VoidedDate = @VoidedDate
                                   WHERE Id = @Id";
 
             var sqlDeleteItems = "DELETE FROM SaleItems WHERE SaleId = @SaleId";
@@ -145,6 +147,8 @@ namespace PosSystem.Infrastructure.Repositories
                     sale.PaymentType,
                     sale.AmountPaid,
                     Change = sale.Change,
+                    sale.IsVoided,
+                    sale.VoidedDate,
                     sale.Id
                 }, transaction);
 

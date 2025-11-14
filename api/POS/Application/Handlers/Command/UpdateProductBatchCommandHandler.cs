@@ -40,7 +40,7 @@ namespace POS.Application.Handlers.Command
             batch.SellingPrice = request.SellingPrice;
             batch.WholesalePrice = request.WholesalePrice;
 
-            var updated = await _batchRepository.UpdateAsync(batch);
+            var updated = await _batchRepository.UpdatePricesAsync(batch);
 
             // ✅ After updating batch, recalculate product's HasMultipleProductPrices flag
             var product = await _productRepository.GetByIdAsync(batch.ProductId);

@@ -10,5 +10,6 @@ namespace POS.Domain.Repositories
         Task<ProductBatch> AddAsync(ProductBatch batch);
         Task<ProductBatch> UpdateAsync(ProductBatch batch);
         Task DeleteAsync(int id);
+        Task<ProductBatch> UpdatePricesAsync(ProductBatch batch)
     }
 }

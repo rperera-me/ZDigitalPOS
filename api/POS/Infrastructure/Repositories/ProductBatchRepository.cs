@@ -70,5 +70,15 @@ namespace POS.Infrastructure.Repositories
             await connection.ExecuteAsync(sql, batch);
             return batch;
         }
+
+        public async Task<ProductBatch> UpdatePricesAsync(ProductBatch batch)
+        {
+            var sql = @"UPDATE ProductBatches SET 
+                        SellingPrice = @SellingPrice, WholesalePrice = @WholesalePrice
+                        WHERE Id = @Id";
+            using var connection = _context.CreateConnection();
+            await connection.ExecuteAsync(sql, batch);
+            return batch;
+        }
     }
 }

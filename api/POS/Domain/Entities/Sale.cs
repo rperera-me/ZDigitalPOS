@@ -22,5 +22,8 @@ namespace PosSystem.Domain.Entities
         public string PaymentType { get; set; } = string.Empty;
         public decimal AmountPaid { get; set; }
         public decimal Change { get; set; }
+
+        public bool IsVoided { get; set; } = false;
+        public DateTime? VoidedDate { get; set; }
     }
 }
