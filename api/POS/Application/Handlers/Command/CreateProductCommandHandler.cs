@@ -60,7 +60,7 @@ namespace POS.Application.Handlers.Command
                 {
                     ProductId = created.Id,
                     BatchNumber = "INITIAL",
-                    SupplierId = 0,
+                    SupplierId = null,
                     CostPrice = request.CostPrice ?? 0,
                     ProductPrice = request.ProductPrice.Value,
                     SellingPrice = request.SellingPrice ?? request.ProductPrice.Value,

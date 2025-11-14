@@ -5,7 +5,7 @@
         public int Id { get; set; }
         public int ProductId { get; set; }
         public string BatchNumber { get; set; } = string.Empty;
-        public int SupplierId { get; set; }
+        public int? SupplierId { get; set; }
         public decimal CostPrice { get; set; }
         public decimal ProductPrice { get; set; }
         public decimal SellingPrice { get; set; }

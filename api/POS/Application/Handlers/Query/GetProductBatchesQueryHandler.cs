@@ -31,7 +31,7 @@ namespace POS.Application.Handlers.Query
 
             foreach (var batch in batches)
             {
-                var supplier = await _supplierRepository.GetByIdAsync(batch.SupplierId);
+                var supplier = await _supplierRepository.GetByIdAsync(batch.SupplierId ?? 0);
 
                 batchDtos.Add(new ProductBatchDto
                 {
