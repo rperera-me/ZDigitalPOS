@@ -1,6 +1,7 @@
 using Microsoft.OpenApi.Models;
 using POS.Application.Commands.Categories;
 using POS.Application.Commands.GRN;
+using POS.Application.Commands.Products;
 using POS.Application.Commands.Sales;
 using POS.Application.Commands.Suppliers;
 using POS.Application.Queries.Categories;
@@ -60,6 +61,7 @@ builder.Services.AddMediatR(cfg =>
         typeof(CreateProductCommand).Assembly,
         typeof(DeleteProductCommand).Assembly,
         typeof(UpdateProductCommand).Assembly,
+        typeof(UpdateProductBatchCommand).Assembly,
 
         typeof(CreateCategoryCommand).Assembly,
         typeof(UpdateCategoryCommand).Assembly,

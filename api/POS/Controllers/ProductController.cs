@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using POS.Application.Commands.Products;
 using POS.Application.DTOs;
 using POS.Application.Queries.Products;
 using PosSystem.Application.Commands.Products;
@@ -81,6 +82,27 @@ namespace PosSystem.Controllers
         {
             var variants = await _mediator.Send(new GetProductPriceVariantsQuery { ProductId = id });
             return Ok(variants);
+        }
+
+        [HttpPut("batches/{id}")]
+        public async Task<ActionResult<ProductBatchDto>> UpdateBatchPrices(int id, [FromBody] UpdateProductBatchCommand command)
+        {
+            if (id != command.Id)
+                return BadRequest("ID mismatch");
+
+            try
+            {
+                var result = await _mediator.Send(command);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }
