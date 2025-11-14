@@ -24,6 +24,7 @@ import {
   ReceiptModal,
   AddCustomerModal
 } from "../components/modals";
+import TodaySalesPage from "./TodaySalesPage";
 
 export default function CashierPage() {
   const dispatch = useDispatch();
@@ -68,6 +69,8 @@ export default function CashierPage() {
 
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [addCustomerType, setAddCustomerType] = useState(customerType);
+
+  const [showTodaySales, setShowTodaySales] = useState(false);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState("");
@@ -141,7 +144,7 @@ export default function CashierPage() {
       .catch(() => alert("Product not found."));
   }, [barcodeInput, barcodeQuantity, customerType]);
 
-    const handleCustomerAdded = useCallback((newCustomer) => {
+  const handleCustomerAdded = useCallback((newCustomer) => {
     // Refresh customers list
     api.get("/customer").then((res) => {
       const filteredCustomers = res.data.filter(c => c.type !== "walk-in");
@@ -447,29 +450,6 @@ export default function CashierPage() {
     });
   }
 
-  function handleLoadLastSale() {
-    if (!lastSale) return;
-
-    dispatch(clearSale());
-    lastSale.saleItems.forEach((si) => {
-      dispatch(
-        addSaleItem({
-          productId: si.productId,
-          name: si.productName || si.name,
-          price: si.price,
-          quantity: si.quantity
-        })
-      );
-    });
-
-    if (lastSale.customer) {
-      dispatch(setCustomer(lastSale.customer));
-    }
-
-    setIsLastSaleModalOpen(false);
-    alert("Last sale loaded into current sale.");
-  }
-
   useEffect(() => {
     const updateDateTime = () => {
       const now = new Date();
@@ -718,7 +698,7 @@ export default function CashierPage() {
 
                 {/* Today Sales */}
                 <button
-                  onClick={() => navigate("/sales")}
+                  onClick={() => setShowTodaySales(true)}
                   className="flex flex-col items-center justify-center p-2 bg-gray-100 hover:bg-blue-100 rounded transition-colors"
                 >
                   <svg className="w-5 h-5 text-gray-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1009,7 +989,6 @@ export default function CashierPage() {
         isOpen={isLastSaleModalOpen}
         onClose={() => setIsLastSaleModalOpen(false)}
         lastSale={lastSale}
-        onLoadSale={handleLoadLastSale}
         onPrintReceipt={(saleData) => {
           i18n.changeLanguage(storeSetting.receiptLanguage || "en");
           setReceiptData(saleData);
@@ -1051,6 +1030,11 @@ export default function CashierPage() {
         onCustomerAdded={handleCustomerAdded}
         customerType={addCustomerType}
         allowTypeSelection={false}
+      />
+
+      <TodaySalesPage
+        isOpen={showTodaySales}
+        onClose={() => setShowTodaySales(false)}
       />
     </div >
   );

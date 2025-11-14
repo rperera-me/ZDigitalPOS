@@ -4,16 +4,11 @@ export default function LastSaleModal({
   isOpen,
   onClose,
   lastSale,
-  onLoadSale,
   onPrintReceipt,
   i18n,
   storeSetting,
 }) {
   if (!isOpen || !lastSale) return null;
-
-  const handleLoadSale = () => {
-    onLoadSale();
-  };
 
   const handlePrintReceipt = () => {
     i18n.changeLanguage(storeSetting.receiptLanguage || "en");
@@ -55,11 +50,10 @@ export default function LastSaleModal({
             </div>
             <div>
               <p className="text-xs text-gray-600 mb-1">Payment Type</p>
-              <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                lastSale.paymentType === "Cash" ? "bg-green-100 text-green-700" :
-                lastSale.paymentType === "Card" ? "bg-purple-100 text-purple-700" :
-                "bg-orange-100 text-orange-700"
-              }`}>
+              <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${lastSale.paymentType === "Cash" ? "bg-green-100 text-green-700" :
+                  lastSale.paymentType === "Card" ? "bg-purple-100 text-purple-700" :
+                    "bg-orange-100 text-orange-700"
+                }`}>
                 {lastSale.paymentType}
               </span>
             </div>
@@ -142,15 +136,6 @@ export default function LastSaleModal({
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <button
-            onClick={handleLoadSale}
-            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition font-semibold flex items-center justify-center gap-2 shadow-md"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Load to Current Sale
-          </button>
           <button
             onClick={handlePrintReceipt}
             className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2 shadow-md"
