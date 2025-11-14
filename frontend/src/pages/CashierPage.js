@@ -1049,6 +1049,7 @@ export default function CashierPage() {
         onClose={() => setShowAddCustomerModal(false)}
         onCustomerAdded={handleCustomerAdded}
         customerType={addCustomerType}
+        allowTypeSelection={false}
       />
     </div >
   );

@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
-import { setCategories, setProducts, setSuppliers } from "../app/posSlice";
+import { setCategories, setProducts} from "../app/posSlice";
 
 export default function AdminProductsPage() {
   const dispatch = useDispatch();
   const products = useSelector((state) => state.pos.products);
   const categories = useSelector((state) => state.pos.categories);
-  const suppliers = useSelector((state) => state.pos.suppliers);
 
   // ✅ ALL STATE VARIABLES - Including batchNumber
   const [name, setName] = useState("");
@@ -20,8 +19,6 @@ export default function AdminProductsPage() {
   const [productPrice, setProductPrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [wholesalePrice, setWholesalePrice] = useState("");
-  const [supplierId, setSupplierId] = useState("");
-  const [batchNumber, setBatchNumber] = useState(""); // ✅ ADDED - Was missing!
   const [manufactureDate, setManufactureDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
 
@@ -32,11 +29,10 @@ export default function AdminProductsPage() {
   useEffect(() => {
     api.get("/category").then((res) => dispatch(setCategories(res.data)));
     api.get("/product").then((res) => dispatch(setProducts(res.data)));
-    api.get("/supplier").then((res) => dispatch(setSuppliers(res.data)));
   }, [dispatch]);
 
   const generateBarcode = () => {
-    const randomBarcode = "PRD" + Date.now().toString().slice(-10);
+    const randomBarcode = "CODE" + Date.now().toString().slice(-10);
     setBarcode(randomBarcode);
   };
 
@@ -56,8 +52,6 @@ export default function AdminProductsPage() {
     setProductPrice("");
     setSellingPrice("");
     setWholesalePrice("");
-    setSupplierId("");
-    setBatchNumber(""); // ✅ RESET batchNumber too
     setManufactureDate("");
     setExpiryDate("");
   };
@@ -83,11 +77,7 @@ export default function AdminProductsPage() {
       barcode,
       categoryId: parseInt(categoryId),
       stockQuantity: parseInt(stockQuantity) || 0,
-      defaultSupplierId: supplierId ? parseInt(supplierId) : null,
-
-      // ✅ Only send batch/price data if stock > 0
       ...(hasQuantity && {
-        batchNumber: batchNumber || null,
         costPrice: parseFloat(costPrice),
         productPrice: parseFloat(productPrice),
         sellingPrice: parseFloat(sellingPrice),
@@ -246,44 +236,8 @@ export default function AdminProductsPage() {
         {hasQuantity && (
           <div className="border-t-2 border-gray-200 pt-4 mt-4">
             <h4 className="font-semibold mb-3 text-gray-700 flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Pricing Details <span className="text-red-500 text-sm">(Required when quantity &gt; 0)</span>
+              Pricing Details
             </h4>
-
-            {/* ✅ Batch Number Field - Added Here */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Batch Number (Optional)
-                  <span className="text-xs text-gray-500 block">Auto-generated if empty</span>
-                </label>
-                <input
-                  type="text"
-                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                  placeholder="e.g., BATCH001"
-                  value={batchNumber}
-                  onChange={(e) => setBatchNumber(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">Default Supplier</label>
-                <select
-                  className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-                  value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                >
-                  <option value="">Select Supplier</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div>
@@ -298,14 +252,13 @@ export default function AdminProductsPage() {
                   value={costPrice}
                   onChange={(e) => setCostPrice(e.target.value)}
                   min="0"
-                  step="0.01"
+                  step="1"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
                   Product Price (MRP) <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 block">Printed on product</span>
                 </label>
                 <input
                   type="number"
@@ -314,14 +267,13 @@ export default function AdminProductsPage() {
                   value={productPrice}
                   onChange={(e) => setProductPrice(e.target.value)}
                   min="0"
-                  step="0.01"
+                  step="1"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
                   Selling Price <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 block">Retail customer pays</span>
                 </label>
                 <input
                   type="number"
@@ -330,14 +282,13 @@ export default function AdminProductsPage() {
                   value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value)}
                   min="0"
-                  step="0.01"
+                  step="1"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Wholesale Price
-                  <span className="text-xs text-gray-500 block">Bulk buyers</span>
+                  Wholesale Price <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -346,7 +297,7 @@ export default function AdminProductsPage() {
                   value={wholesalePrice}
                   onChange={(e) => setWholesalePrice(e.target.value)}
                   min="0"
-                  step="0.01"
+                  step="1"
                 />
               </div>
             </div>
@@ -428,8 +379,6 @@ export default function AdminProductsPage() {
                     <td className="p-3 text-sm font-medium">{p.name}</td>
                     <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
                     <td className="p-3 text-sm">{category?.name || '-'}</td>
-
-                    {/* Cost Price Column */}
                     <td className="p-3 text-right">
                       <div className="text-sm">
                         {showPriceRange ? (
@@ -446,8 +395,6 @@ export default function AdminProductsPage() {
                         )}
                       </div>
                     </td>
-
-                    {/* Selling Price Column */}
                     <td className="p-3 text-right">
                       {showPriceRange ? (
                         <div className="text-sm space-y-0.5">
@@ -461,12 +408,6 @@ export default function AdminProductsPage() {
                           <div className="text-xs text-purple-600">
                             W/S: {formatPriceRange(p.minWholesalePrice, p.maxWholesalePrice)}
                           </div>
-                          <button
-                            onClick={() => viewStockByPrice(p)}
-                            className="text-xs text-purple-600 hover:text-purple-800 underline mt-1"
-                          >
-                            View Details →
-                          </button>
                         </div>
                       ) : (
                         <div className="text-sm space-y-0.5">

@@ -35,12 +35,8 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       {/* Header Section */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Dashboard</h1>
-            <p className="text-gray-600">Welcome back, {userData?.username || "User"}!</p>
-          </div>
-          <div className="text-right">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
             <div className="text-2xl font-bold text-gray-800">{date.toLocaleDateString()}</div>
             <div className="text-3xl font-extrabold text-blue-600 tabular-nums">
               {date.toLocaleTimeString()}

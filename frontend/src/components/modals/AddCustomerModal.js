@@ -1,12 +1,21 @@
 import React, { useState } from "react";
 
-export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, customerType = "loyalty" }) {
+export default function AddCustomerModal({ 
+  isOpen, 
+  onClose, 
+  onCustomerAdded, 
+  customerType = "loyalty",
+  allowTypeSelection = false // ✅ NEW PROP - true for admin, false for cashier
+}) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [nicNumber, setNicNumber] = useState("");
   const [creditBalance, setCreditBalance] = useState("0");
   const [loading, setLoading] = useState(false);
+  
+  // ✅ NEW STATE for type selection (only used in admin)
+  const [selectedType, setSelectedType] = useState(customerType);
 
   const resetForm = () => {
     setName("");
@@ -14,6 +23,7 @@ export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, cus
     setAddress("");
     setNicNumber("");
     setCreditBalance("0");
+    setSelectedType(customerType);
   };
 
   const handleSubmit = async (e) => {
@@ -26,12 +36,15 @@ export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, cus
 
     setLoading(true);
 
+    // ✅ Use selectedType if type selection allowed, otherwise use prop
+    const finalType = allowTypeSelection ? selectedType : customerType;
+
     const customerData = {
       name: name.trim(),
       phone: phone.trim() || null,
       address: address.trim() || null,
       nicNumber: nicNumber.trim() || null,
-      type: customerType,
+      type: finalType,
       creditBalance: parseFloat(creditBalance) || 0,
       loyaltyPoints: 0,
     };
@@ -40,10 +53,9 @@ export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, cus
       const api = require("../../api/axios").default;
       const response = await api.post("/customer", customerData);
       
-      alert(`${customerType === 'loyalty' ? 'Loyalty' : 'Wholesale'} customer added successfully!`);
+      alert(`${finalType === 'loyalty' ? 'Loyalty' : 'Wholesale'} customer added successfully!`);
       resetForm();
       
-      // Notify parent component with the new customer data
       if (onCustomerAdded) {
         onCustomerAdded(response.data);
       }
@@ -67,7 +79,11 @@ export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, cus
             <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
-            Add New {customerType === 'loyalty' ? 'Loyalty' : 'Wholesale'} Customer
+            {/* ✅ Dynamic header based on whether type selection is allowed */}
+            {allowTypeSelection 
+              ? "Add New Customer"
+              : `Add New ${selectedType === 'loyalty' ? 'Loyalty' : 'Wholesale'} Customer`
+            }
           </h3>
           <button
             onClick={() => {
@@ -84,6 +100,24 @@ export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, cus
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ✅ CONDITIONAL TYPE SELECTOR - Only show in admin */}
+          {allowTypeSelection && (
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Customer Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
+                disabled={loading}
+              >
+                <option value="loyalty">Loyalty Customer</option>
+                <option value="wholesale">Wholesale Customer</option>
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">
@@ -156,18 +190,20 @@ export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, cus
             </div>
           </div>
 
-          {/* Info Box */}
+          {/* Info Box - Updated to show selected type */}
           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
             <div className="flex items-start gap-2">
               <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="text-sm text-blue-800">
-                <p className="font-semibold mb-1">Customer Type: {customerType === 'loyalty' ? 'Loyalty' : 'Wholesale'}</p>
-                {customerType === 'loyalty' && (
+                <p className="font-semibold mb-1">
+                  Customer Type: {selectedType === 'loyalty' ? 'Loyalty' : 'Wholesale'}
+                </p>
+                {selectedType === 'loyalty' && (
                   <p>Loyalty customers earn 1 point per Rs.100 spent and can accumulate credit.</p>
                 )}
-                {customerType === 'wholesale' && (
+                {selectedType === 'wholesale' && (
                   <p>Wholesale customers get special pricing and can purchase on credit.</p>
                 )}
               </div>
@@ -214,3 +250,4 @@ export default function AddCustomerModal({ isOpen, onClose, onCustomerAdded, cus
     </div>
   );
 }
+

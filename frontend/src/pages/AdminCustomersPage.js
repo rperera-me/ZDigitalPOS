@@ -288,7 +288,7 @@ export default function AdminCustomersPage() {
           isOpen={showModal && !editingCustomer}
           onClose={() => setShowModal(false)}
           onCustomerAdded={fetchCustomers}
-          customerType="loyalty" // Default to loyalty, or make it selectable
+          allowTypeSelection={true} // Default to loyalty, or make it selectable
         />
       )}
     </div>
