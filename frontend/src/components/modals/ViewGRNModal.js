@@ -15,7 +15,6 @@ export default function ViewGRNModal({ isOpen, onClose, grn }) {
               </svg>
               GRN Details
             </h3>
-            <p className="text-sm text-gray-600 mt-1">Read-only view • GRNs cannot be modified after creation</p>
           </div>
           <button
             onClick={onClose}
@@ -169,34 +168,6 @@ export default function ViewGRNModal({ isOpen, onClose, grn }) {
             <div className="text-green-600 text-sm font-medium mb-1">Total Units</div>
             <div className="text-3xl font-bold text-green-700">
               {grn.items?.reduce((sum, item) => sum + item.quantity, 0) || 0}
-            </div>
-          </div>
-          
-          <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 text-center">
-            <div className="text-orange-600 text-sm font-medium mb-1">Average Cost/Unit</div>
-            <div className="text-3xl font-bold text-orange-700">
-              Rs {grn.items?.length > 0 
-                ? (grn.totalAmount / grn.items.reduce((sum, item) => sum + item.quantity, 0)).toFixed(2)
-                : '0.00'
-              }
-            </div>
-          </div>
-        </div>
-
-        {/* Info Alert */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="text-sm text-blue-800">
-              <p className="font-semibold mb-1">Important Information:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>GRN records are <strong>immutable</strong> and cannot be edited after creation</li>
-                <li>All items in this GRN have been added to inventory</li>
-                <li>Product batches have been created with the specified pricing</li>
-                <li>Stock quantities have been updated accordingly</li>
-              </ul>
             </div>
           </div>
         </div>
