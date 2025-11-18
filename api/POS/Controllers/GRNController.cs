@@ -46,5 +46,20 @@ namespace POS.Controllers
             var grn = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetById), new { id = grn.Id }, grn);
         }
+
+        [HttpPost("{id}/payment")]
+        public async Task<ActionResult<GRNPaymentDto>> AddPayment(int id, AddGRNPaymentCommand command)
+        {
+            command.GRNId = id;
+            var payment = await _mediator.Send(command);
+            return Ok(payment);
+        }
+
+        [HttpPut("{id}/payment-status")]
+        public async Task<ActionResult<GRNDto>> UpdatePaymentStatus(int id)
+        {
+            var result = await _mediator.Send(new UpdateGRNPaymentStatusCommand { GRNId = id });
+            return Ok(result);
+        }
     }
 }

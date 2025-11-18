@@ -16,8 +16,14 @@ namespace POS.Infrastructure.Repositories
 
         public async Task<GRN> AddAsync(GRN grn)
         {
-            var sqlGRN = @"INSERT INTO GRNs (GRNNumber, SupplierId, ReceivedDate, ReceivedBy, TotalAmount, Notes)
-                           VALUES (@GRNNumber, @SupplierId, @ReceivedDate, @ReceivedBy, @TotalAmount, @Notes);
+            var sqlGRN = @"INSERT INTO GRNs 
+                           (GRNNumber, SupplierId, ReceivedDate, ReceivedBy, TotalAmount, Notes,
+                            PaymentStatus, PaidAmount, CreditAmount, PaymentType, PaymentDate, 
+                            ChequeNumber, ChequeDate, PaymentNotes)
+                           VALUES 
+                           (@GRNNumber, @SupplierId, @ReceivedDate, @ReceivedBy, @TotalAmount, @Notes,
+                            @PaymentStatus, @PaidAmount, @CreditAmount, @PaymentType, @PaymentDate,
+                            @ChequeNumber, @ChequeDate, @PaymentNotes);
                            SELECT CAST(SCOPE_IDENTITY() as int)";
 
             var sqlItem = @"INSERT INTO GRNItems 
@@ -39,7 +45,15 @@ namespace POS.Infrastructure.Repositories
                     grn.ReceivedDate,
                     grn.ReceivedBy,
                     grn.TotalAmount,
-                    grn.Notes
+                    grn.Notes,
+                    grn.PaymentStatus,
+                    grn.PaidAmount,
+                    grn.CreditAmount,
+                    grn.PaymentType,
+                    grn.PaymentDate,
+                    grn.ChequeNumber,
+                    grn.ChequeDate,
+                    grn.PaymentNotes
                 }, transaction);
 
                 foreach (var item in grn.Items)
@@ -126,6 +140,62 @@ namespace POS.Infrastructure.Repositories
             }
 
             return grns;
+        }
+
+        public async Task UpdatePaymentStatusAsync(int grnId, string status, decimal paidAmount, decimal creditAmount)
+        {
+            var sql = @"UPDATE GRNs 
+                        SET PaymentStatus = @Status, 
+                            PaidAmount = @PaidAmount, 
+                            CreditAmount = @CreditAmount
+                        WHERE Id = @GRNId";
+
+            using var connection = _context.CreateConnection();
+            await connection.ExecuteAsync(sql, new
+            {
+                GRNId = grnId,
+                Status = status,
+                PaidAmount = paidAmount,
+                CreditAmount = creditAmount
+            });
+        }
+    }
+
+    public class GRNPaymentRepository : IGRNPaymentRepository
+    {
+        private readonly DapperContext _context;
+
+        public GRNPaymentRepository(DapperContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<GRNPayment> AddAsync(GRNPayment payment)
+        {
+            var sql = @"INSERT INTO GRNPayments 
+                        (GRNId, PaymentDate, PaymentType, Amount, ChequeNumber, ChequeDate, Notes, RecordedBy)
+                        VALUES 
+                        (@GRNId, @PaymentDate, @PaymentType, @Amount, @ChequeNumber, @ChequeDate, @Notes, @RecordedBy);
+                        SELECT CAST(SCOPE_IDENTITY() as int)";
+
+            using var connection = _context.CreateConnection();
+            var id = await connection.QuerySingleAsync<int>(sql, payment);
+            payment.Id = id;
+            return payment;
+        }
+
+        public async Task<IEnumerable<GRNPayment>> GetByGRNIdAsync(int grnId)
+        {
+            var sql = "SELECT * FROM GRNPayments WHERE GRNId = @GRNId ORDER BY PaymentDate DESC";
+            using var connection = _context.CreateConnection();
+            return await connection.QueryAsync<GRNPayment>(sql, new { GRNId = grnId });
+        }
+
+        public async Task<GRNPayment?> GetByIdAsync(int id)
+        {
+            var sql = "SELECT * FROM GRNPayments WHERE Id = @Id";
+            using var connection = _context.CreateConnection();
+            return await connection.QuerySingleOrDefaultAsync<GRNPayment>(sql, new { Id = id });
         }
     }
 }

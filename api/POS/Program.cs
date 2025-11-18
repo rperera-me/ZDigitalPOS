@@ -51,6 +51,7 @@ builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<IProductBatchRepository, ProductBatchRepository>();
 builder.Services.AddScoped<IGRNRepository, GRNRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IGRNPaymentRepository, GRNPaymentRepository>();
 
 // Register MediatR for CQRS handlers
 builder.Services.AddMediatR(cfg =>
@@ -84,6 +85,8 @@ builder.Services.AddMediatR(cfg =>
         typeof(UpdateSupplierCommand).Assembly,
 
         typeof(CreateGRNCommand).Assembly,
+        typeof(AddGRNPaymentCommand).Assembly,
+        typeof(UpdateGRNPaymentStatusCommand).Assembly,
 
         typeof(GetAllCustomersQuery).Assembly,
         typeof(GetCustomerByIdQuery).Assembly,
