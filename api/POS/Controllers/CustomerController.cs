@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using POS.Application.Queries.Customers;
 using PosSystem.Application.Commands.Customers;
 using PosSystem.Application.DTOs;
 using PosSystem.Application.Queries.Customers;
@@ -46,9 +47,25 @@ namespace PosSystem.Controllers
             return Ok(updated);
         }
 
+        [HttpGet("{id}/purchases")]
+        public async Task<ActionResult<IEnumerable<CustomerPurchaseDto>>> GetCustomerPurchases(int id)
+        {
+            var purchases = await _mediator.Send(new GetCustomerPurchaseHistoryQuery { CustomerId = id });
+            return Ok(purchases);
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            // Check if customer has outstanding credit
+            var customer = await _mediator.Send(new GetCustomerByIdQuery { Id = id });
+
+            if (customer == null)
+                return NotFound();
+
+            if (customer.CreditBalance > 0)
+                return BadRequest(new { message = $"Cannot delete customer with outstanding credit balance of Rs {customer.CreditBalance:F2}" });
+
             await _mediator.Send(new DeleteCustomerCommand { Id = id });
             return NoContent();
         }

@@ -15,5 +15,6 @@ namespace PosSystem.Domain.Repositories
         Task<string> GetLastInvoiceNumberAsync();
         Task<List<BestSellerDto>> GetBestSellersAsync();
         Task DeleteAsync(int saleId);
+        Task<IEnumerable<Sale>> GetSalesByCustomerAsync(int customerId);
     }
 }

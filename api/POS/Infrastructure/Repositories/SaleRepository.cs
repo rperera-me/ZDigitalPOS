@@ -335,5 +335,26 @@ namespace PosSystem.Infrastructure.Repositories
                 throw;
             }
         }
+
+        public async Task<IEnumerable<Sale>> GetSalesByCustomerAsync(int customerId)
+        {
+            var sqlSale = "SELECT * FROM Sales WHERE CustomerId = @CustomerId AND IsHeld = 0 ORDER BY SaleDate DESC";
+            var sqlItems = "SELECT * FROM SaleItems WHERE SaleId = @SaleId";
+            var sqlPayments = "SELECT * FROM Payments WHERE SaleId = @SaleId";
+
+            using var connection = _context.CreateConnection();
+            var sales = await connection.QueryAsync<Sale>(sqlSale, new { CustomerId = customerId });
+
+            foreach (var sale in sales)
+            {
+                var items = await connection.QueryAsync<SaleItem>(sqlItems, new { SaleId = sale.Id });
+                sale.SaleItems = items.ToList();
+
+                var payments = await connection.QueryAsync<Payment>(sqlPayments, new { SaleId = sale.Id });
+                sale.Payments = payments.ToList();
+            }
+
+            return sales;
+        }
     }
 }

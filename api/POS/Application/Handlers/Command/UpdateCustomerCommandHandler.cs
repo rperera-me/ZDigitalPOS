@@ -17,12 +17,14 @@ namespace POS.Application.Handlers.Command
         public async Task<CustomerDto> Handle(UpdateCustomerCommand request, CancellationToken cancellationToken)
         {
             var existing = await _repository.GetByIdAsync(request.Id);
-            if (existing == null) throw new KeyNotFoundException("Customer not found");
+            if (existing == null)
+                throw new KeyNotFoundException($"Customer with ID {request.Id} not found");
 
-            existing.Name = request.Name;
-            existing.Phone = request.Phone;
-            existing.Address = request.Address;
-            existing.NICNumber = request.NICNumber;
+            // Update fields
+            existing.Name = request.Name?.Trim() ?? throw new ArgumentException("Customer name is required");
+            existing.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+            existing.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+            existing.NICNumber = string.IsNullOrWhiteSpace(request.NICNumber) ? null : request.NICNumber.Trim();
             existing.Type = request.Type;
             existing.CreditBalance = request.CreditBalance;
             existing.LoyaltyPoints = request.LoyaltyPoints;
