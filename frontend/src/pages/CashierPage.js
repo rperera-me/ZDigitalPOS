@@ -75,6 +75,8 @@ export default function CashierPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentDate, setCurrentDate] = useState("");
 
+  const [quantityMode, setQuantityMode] = useState(false);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -111,38 +113,44 @@ export default function CashierPage() {
     const code = barcode || barcodeInput.trim();
     if (!code) return;
 
-    const quantity = parseInt(barcodeQuantity) || 1;
-    console.log("🔍 Barcode search:", code, "Quantity:", quantity);
+    console.log("🔍 Barcode scan:", code, "Quantity mode:", quantityMode);
 
     api.get(`/product/barcode/${code}`)
       .then((res) => {
         if (res.data) {
           console.log("✅ Product found:", res.data.name);
-          console.log("📊 HasMultipleProductPrices:", res.data.hasMultipleProductPrices);
 
-          if (res.data.hasMultipleProductPrices) {
+          // If quantity mode is ON or product has multiple prices, show price modal
+          if (quantityMode || res.data.hasMultipleProductPrices) {
             onAddProduct(res.data);
           } else {
+            // Direct add with quantity 1
             const price = customerType === "wholesale"
               ? (res.data.minWholesalePrice || res.data.minSellingPrice || 0)
               : (res.data.minSellingPrice || 0);
 
-            addToCart(res.data, price, quantity, null);
+            addToCart(res.data, price, 1, null);
           }
 
+          // Clear input and refocus
           if (!barcode) {
             setBarcodeInput("");
-            setBarcodeQuantity(1);
             setTimeout(() => {
-              document.getElementById('barcode-input')?.focus();
+              document.getElementById('barcode-scanner-input')?.focus();
             }, 100);
           }
         } else {
           alert("Product not found.");
+          setBarcodeInput("");
+          document.getElementById('barcode-scanner-input')?.focus();
         }
       })
-      .catch(() => alert("Product not found."));
-  }, [barcodeInput, barcodeQuantity, customerType]);
+      .catch(() => {
+        alert("Product not found.");
+        setBarcodeInput("");
+        document.getElementById('barcode-scanner-input')?.focus();
+      });
+  }, [barcodeInput, quantityMode, customerType]);
 
   const handleCustomerAdded = useCallback((newCustomer) => {
     // Refresh customers list
@@ -154,6 +162,16 @@ export default function CashierPage() {
       dispatch(setCustomer(newCustomer));
     });
   }, [dispatch]);
+
+  const refocusBarcodeInput = useCallback(() => {
+    setTimeout(() => {
+      const input = document.getElementById('barcode-scanner-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 100);
+  }, []);
 
   // Offline sync functionality (commented for future use)
   // useEffect(() => {
@@ -211,6 +229,7 @@ export default function CashierPage() {
     setShowPriceModal(false);
     setSelectedProduct(null);
     setPriceVariants([]);
+    refocusBarcodeInput();
   }
 
   function onAddProduct(product) {
@@ -269,6 +288,7 @@ export default function CashierPage() {
 
   function onRemoveSaleItem(productId, sourceId, price) {
     dispatch(removeSaleItem({ productId, sourceId, price }));
+    refocusBarcodeInput();
   }
 
   function onUpdateQuantity(productId, sourceId, price, quantity) {
@@ -609,40 +629,130 @@ export default function CashierPage() {
           <div className="flex-1 overflow-y-auto p-2">
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {filteredProducts.map((p) => {
-                const displayPrice = p.minProductPrice || 0;
                 const hasMultiplePrices = p.hasMultipleProductPrices;
+
+                // Calculate price display
+                let priceDisplay;
+                if (hasMultiplePrices) {
+                  const minPrice = customerType === "wholesale"
+                    ? p.minWholesalePrice
+                    : p.minSellingPrice;
+                  const maxPrice = customerType === "wholesale"
+                    ? p.maxWholesalePrice
+                    : p.maxSellingPrice;
+                  priceDisplay = `${minPrice?.toFixed(2)} - ${maxPrice?.toFixed(2)}`;
+                } else {
+                  const price = customerType === "wholesale"
+                    ? (p.minWholesalePrice || p.minSellingPrice)
+                    : p.minSellingPrice;
+                  priceDisplay = price?.toFixed(2) || '0.00';
+                }
 
                 return (
                   <button
                     key={p.id}
                     onClick={() => onAddProduct(p)}
-                    className="group relative bg-white rounded-lg p-2 shadow hover:shadow-lg transition-all hover:scale-105 cursor-pointer border border-gray-200 hover:border-blue-300"
+                    className="relative bg-white rounded-lg p-3 shadow-md hover:shadow-xl transition-all hover:scale-105 cursor-pointer border-2 border-gray-200 hover:border-blue-400 flex flex-col h-full"
                   >
-                    {/* Product Name - Compact */}
-                    <h3 className="font-semibold text-gray-800 text-xs mb-1 text-center line-clamp-2 min-h-[2rem]">
-                      {p.name}
-                    </h3>
+                    {/* Stock Badge - Top Right */}
+                    <div className="absolute top-2 right-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-md">
+                      {p.stockQuantity}
+                    </div>
 
-                    {/* Price Display - Compact */}
-                    <div className="flex items-center justify-center">
+                    {/* Product Name */}
+                    <div className="flex-1 flex items-center justify-center mb-2 min-h-[3rem]">
+                      <h3 className="font-bold text-gray-800 text-sm text-center line-clamp-2 px-1">
+                        {p.name}
+                      </h3>
+                    </div>
+
+                    {/* Price Section */}
+                    <div className="border-t border-gray-200 pt-2 mt-auto">
                       {hasMultiplePrices ? (
-                        <span className="text-xs bg-gradient-to-r from-purple-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-bold">
-                          Multiple
-                        </span>
+                        <div className="space-y-1">
+                          <div className="text-xs text-purple-600 font-semibold text-center">
+                            Multiple Prices
+                          </div>
+                          <div className="text-sm font-bold text-blue-600 text-center">
+                            Rs {priceDisplay}
+                          </div>
+                        </div>
                       ) : (
-                        <div className="text-sm font-bold text-blue-600">
-                          Rs {displayPrice.toFixed(2)}
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-blue-600">
+                            Rs {priceDisplay}
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Stock Badge */}
-                    <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1 rounded">
-                      {p.stockQuantity}
-                    </div>
+                    {/* Click Indicator */}
+                    <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-5 rounded-lg transition-opacity pointer-events-none" />
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="border-t-2 border-gray-300 bg-gradient-to-r from-blue-50 to-blue-100 p-2">
+            <div className="flex items-center gap-2">
+              {/* Quantity Mode Toggle Button */}
+              <button
+                onClick={() => setQuantityMode(!quantityMode)}
+                className={`flex-shrink-0 px-4 py-3 rounded-lg font-bold text-sm transition-all transform active:scale-95 ${quantityMode
+                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400'
+                  }`}
+                title={quantityMode ? "Quantity mode ON - Click to disable" : "Quantity mode OFF - Click to enable"}
+              >
+                <div className="flex items-center gap-2">
+                  {quantityMode ? (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>QTY *</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>QTY</span>
+                    </>
+                  )}
+                </div>
+              </button>
+
+              {/* Barcode Scanner Input */}
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  </svg>
+                </div>
+                <input
+                  id="barcode-scanner-input"
+                  type="text"
+                  className="w-full pl-10 pr-3 py-3 border-2 border-blue-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
+                  placeholder={quantityMode ? "Scan/Type barcode (Quantity mode ON)" : "Scan/Type barcode..."}
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && barcodeInput.trim()) {
+                      handleBarcodeAdd();
+                    }
+                  }}
+                  autoFocus
+                />
+                {quantityMode && (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse">
+                      QTY MODE
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -792,60 +902,8 @@ export default function CashierPage() {
             )}
           </div>
 
-          {/* Barcode Input with Quantity */}
-          <div className="bg-white border-b p-2">
-            <div className="flex gap-1 items-center">
-              <input
-                type="text"
-                className="flex-grow border p-1 rounded text-xs"
-                placeholder="Scan barcode"
-                value={barcodeInput}
-                onChange={(e) => setBarcodeInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleBarcodeAdd();
-                    document.getElementById('barcode-quantity')?.focus();
-                  }
-                }}
-                autoFocus
-                id="barcode-input"
-              />
-              <div className="flex items-center gap-1 bg-gray-100 rounded px-2">
-                <button
-                  onClick={() => setBarcodeQuantity(Math.max(1, parseInt(barcodeQuantity) - 1))}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded font-bold text-sm"
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  value={barcodeQuantity}
-                  onChange={(e) => setBarcodeQuantity(e.target.value)}
-                  className="w-12 border p-1 rounded text-xs text-center"
-                  id="barcode-quantity"
-                />
-                <button
-                  onClick={() => setBarcodeQuantity(parseInt(barcodeQuantity) + 1)}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded font-bold text-sm"
-                >
-                  +
-                </button>
-              </div>
-              <button
-                onClick={() => {
-                  handleBarcodeAdd();
-                  document.getElementById('barcode-input')?.focus();
-                }}
-                className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
           {/* Compact Cart Header - Single Line */}
-          <div className="bg-blue-600 text-white px-2 py-1.5">
+          <div className="bg-blue-600 text-white px-2 py-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold">Current Sale</span>
               <div className="flex items-center gap-3">
@@ -968,7 +1026,10 @@ export default function CashierPage() {
       {/* PAYMENT MODAL */}
       <PaymentModal
         isOpen={isPaymentOpen}
-        onClose={() => setIsPaymentOpen(false)}
+        onClose={() => {
+          setIsPaymentOpen(false);
+          refocusBarcodeInput(); 
+        }}
         onPay={onPay}
         getTotalAmount={getTotalAmount}
         customers={customers}
@@ -1017,6 +1078,7 @@ export default function CashierPage() {
           setShowPriceModal(false);
           setSelectedProduct(null);
           setPriceVariants([]);
+          refocusBarcodeInput();
         }}
         product={selectedProduct}
         priceVariants={priceVariants}
