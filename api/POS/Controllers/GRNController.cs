@@ -40,6 +40,13 @@ namespace POS.Controllers
             return Ok(grns);
         }
 
+        [HttpGet("{id}/payments")]
+        public async Task<ActionResult<IEnumerable<GRNPaymentDto>>> GetPayments(int id)
+        {
+            var payments = await _mediator.Send(new GetGRNPaymentsQuery { GRNId = id });
+            return Ok(payments);
+        }
+
         [HttpPost]
         public async Task<ActionResult<GRNDto>> Create(CreateGRNCommand command)
         {

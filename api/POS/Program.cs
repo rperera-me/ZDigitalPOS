@@ -5,6 +5,7 @@ using POS.Application.Commands.Products;
 using POS.Application.Commands.Sales;
 using POS.Application.Commands.Suppliers;
 using POS.Application.Queries.Categories;
+using POS.Application.Queries.Customers;
 using POS.Application.Queries.Dashboard;
 using POS.Application.Queries.GRN;
 using POS.Application.Queries.Products;
@@ -75,6 +76,7 @@ builder.Services.AddMediatR(cfg =>
         typeof(CreateSaleCommand).Assembly,
         typeof(DeleteHeldSaleCommand).Assembly,
         typeof(UpdateSaleCommand).Assembly,
+        typeof(VoidSaleCommand).Assembly,
 
         typeof(CreateUserCommand).Assembly,
         typeof(AuthenticateUserCommand).Assembly,
@@ -90,6 +92,7 @@ builder.Services.AddMediatR(cfg =>
 
         typeof(GetAllCustomersQuery).Assembly,
         typeof(GetCustomerByIdQuery).Assembly,
+        typeof(GetCustomerPurchaseHistoryQuery).Assembly,
 
         typeof(GetAllProductsQuery).Assembly,
         typeof(GetProductByIdQuery).Assembly,
@@ -106,7 +109,6 @@ builder.Services.AddMediatR(cfg =>
         typeof(GetSalesByDateRangeQuery).Assembly,
         typeof(GetHeldSalesQuery).Assembly,
         typeof(GetSalesStatsQuery).Assembly,
-        typeof(VoidSaleCommand).Assembly,
 
         typeof(GetUserByIdQuery).Assembly,
         typeof(GetUserByUsernameQuery).Assembly,
@@ -117,6 +119,7 @@ builder.Services.AddMediatR(cfg =>
         typeof(GetAllGRNsQuery).Assembly,
         typeof(GetGRNByIdQuery).Assembly,
         typeof(GetGRNsBySupplierQuery).Assembly,
+        typeof(GetGRNPaymentsQuery).Assembly,
 
         typeof(GetBestSellersQuery).Assembly,
         typeof(GetLowStockQuery).Assembly

@@ -10,4 +10,13 @@
         public string? Address { get; set; }
         public bool IsActive { get; set; }
     }
+
+    public class SupplierDetailDto : SupplierDto
+    {
+        public decimal TotalCreditAmount { get; set; }
+        public DateTime? LastVisitedDate { get; set; }
+        public int TotalGRNs { get; set; }
+        public int UnpaidGRNs { get; set; }
+        public int PartiallyPaidGRNs { get; set; }
+    }
 }
