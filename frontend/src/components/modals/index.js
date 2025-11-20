@@ -6,3 +6,4 @@ export { default as ReceiptModal } from './ReceiptPreviewModal';
 export { default as AddCustomerModal } from './AddCustomerModal';
 export { default as ProductUpdateModal } from './ProductUpdateModal';
 export { default as ViewGRNModal } from './ViewGRNModal';
+export { default as SupplierGRNsModal } from './SupplierGRNsModal';
