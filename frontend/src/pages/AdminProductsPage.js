@@ -396,7 +396,6 @@ export default function AdminProductsPage() {
                             <div className="text-orange-600 font-semibold">
                               {formatPriceRange(p.minCostPrice, p.maxCostPrice)}
                             </div>
-                            <div className="text-xs text-gray-500">Multiple costs</div>
                           </div>
                         ) : (
                           <div className="text-orange-600 font-semibold">
@@ -408,7 +407,6 @@ export default function AdminProductsPage() {
                     <td className="p-3 text-right">
                       {showPriceRange ? (
                         <div className="text-sm space-y-0.5">
-                          <div className="text-blue-600 font-semibold">Multiple Prices</div>
                           <div className="text-xs text-gray-600">
                             MRP: {formatPriceRange(p.minProductPrice, p.maxProductPrice)}
                           </div>

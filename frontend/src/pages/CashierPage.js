@@ -76,6 +76,8 @@ export default function CashierPage() {
   const [currentDate, setCurrentDate] = useState("");
 
   const [quantityMode, setQuantityMode] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -539,6 +541,16 @@ export default function CashierPage() {
     };
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100">
 
@@ -571,26 +583,46 @@ export default function CashierPage() {
             </div>
 
             {/* Right - User Info & Logout */}
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1 border border-white/20">
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1 border border-white/20 hover:bg-white/20 transition-all cursor-pointer"
+              >
                 <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <div className="text-white text-sm font-semibold">{user?.username || "Cashier"}</div>
-              </div>
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg transition-all shadow-lg text-sm font-semibold"
-                title="Logout"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                <div className="text-white text-sm font-semibold">
+                  {user?.username || "Cashier"}
+                </div>
+                <svg
+                  className={`w-4 h-4 text-white transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : 'rotate-0'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                <span className="hidden sm:inline">Logout</span>
               </button>
+
+              {/* Dropdown Menu */}
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-semibold"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -654,11 +686,6 @@ export default function CashierPage() {
                     onClick={() => onAddProduct(p)}
                     className="relative bg-white rounded-lg p-3 shadow-md hover:shadow-xl transition-all hover:scale-105 cursor-pointer border-2 border-gray-200 hover:border-blue-400 flex flex-col h-full"
                   >
-                    {/* Stock Badge - Top Right */}
-                    <div className="absolute top-2 right-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-md">
-                      {p.stockQuantity}
-                    </div>
-
                     {/* Product Name */}
                     <div className="flex-1 flex items-center justify-center mb-2 min-h-[3rem]">
                       <h3 className="font-bold text-gray-800 text-sm text-center line-clamp-2 px-1">
@@ -670,9 +697,6 @@ export default function CashierPage() {
                     <div className="border-t border-gray-200 pt-2 mt-auto">
                       {hasMultiplePrices ? (
                         <div className="space-y-1">
-                          <div className="text-xs text-purple-600 font-semibold text-center">
-                            Multiple Prices
-                          </div>
                           <div className="text-sm font-bold text-blue-600 text-center">
                             Rs {priceDisplay}
                           </div>
@@ -1028,7 +1052,7 @@ export default function CashierPage() {
         isOpen={isPaymentOpen}
         onClose={() => {
           setIsPaymentOpen(false);
-          refocusBarcodeInput(); 
+          refocusBarcodeInput();
         }}
         onPay={onPay}
         getTotalAmount={getTotalAmount}

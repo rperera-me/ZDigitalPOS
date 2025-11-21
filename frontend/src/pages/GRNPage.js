@@ -56,8 +56,8 @@ export default function GRNPage() {
     const [newPaymentNotes, setNewPaymentNotes] = useState("");
 
     const totalAmount = items.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
-    const creditAmount = paymentStatus === "unpaid" 
-        ? totalAmount 
+    const creditAmount = paymentStatus === "unpaid"
+        ? totalAmount
         : Math.max(0, totalAmount - parseFloat(paidAmount || 0));
 
     const handleBarcodeSearch = () => {
@@ -125,7 +125,7 @@ export default function GRNPage() {
         setPaymentNotes("");
     };
 
-    const submitGRN = () => {
+    const submitGRN = async () => {
         if (!supplierId) {
             alert("Please select a supplier");
             return;
@@ -152,8 +152,8 @@ export default function GRNPage() {
             }
         }
 
-        const finalPaymentStatus = paymentStatus === "unpaid" 
-            ? "unpaid" 
+        const finalPaymentStatus = paymentStatus === "unpaid"
+            ? "unpaid"
             : (creditAmount > 0 ? "partial" : "paid");
 
         const grnData = {
@@ -170,18 +170,19 @@ export default function GRNPage() {
             paymentNotes: paymentNotes || null
         };
 
-        api.post("/grn", grnData)
-            .then(() => {
-                alert("GRN created successfully!");
-                resetForm();
-                if (selectedSupplierFilter) {
-                    fetchGRNsBySupplier(selectedSupplierFilter);
-                }
-            })
-            .catch((err) => {
-                alert("Failed to create GRN");
-                console.error(err);
-            });
+        try {
+            await api.post("/grn", grnData);
+            alert("GRN created successfully!");
+            resetForm();
+
+            // ✅ CHANGE THIS: Refresh the list if supplier was selected
+            if (selectedSupplierFilter) {
+                await fetchGRNsBySupplier(selectedSupplierFilter);
+            }
+        } catch (err) {
+            alert("Failed to create GRN: " + (err.response?.data?.message || err.message));
+            console.error(err);
+        }
     };
 
     const fetchGRNsBySupplier = async (supplierId) => {
@@ -222,7 +223,20 @@ export default function GRNPage() {
     };
 
     const openPaymentModal = (grn) => {
+        // ✅ ADD THIS: Check if GRN is already fully paid
+        if (grn.paymentStatus === 'paid') {
+            alert("This GRN is already fully paid!");
+            return;
+        }
+
         const remainingAmount = grn.totalAmount - grn.paidAmount;
+
+        // ✅ ADD THIS: Double-check remaining amount
+        if (remainingAmount <= 0) {
+            alert("This GRN has no remaining balance!");
+            return;
+        }
+
         setSelectedGRNForPayment(grn);
         setNewPaymentAmount(remainingAmount.toFixed(2));
         setNewPaymentType("cash");
@@ -265,19 +279,23 @@ export default function GRNPage() {
             await api.post(`/grn/${selectedGRNForPayment.id}/payment`, paymentData);
             alert("Payment recorded successfully!");
             setShowPaymentModal(false);
-            
-            if (selectedSupplierFilter) {
-                fetchGRNsBySupplier(selectedSupplierFilter);
-            }
-            
-            const response = await api.get(`/grn/${selectedGRNForPayment.id}/payments`);
+
+            // ✅ CHANGE THIS: Refresh the GRN list to get updated payment status
+            await fetchGRNsBySupplier(selectedSupplierFilter);
+
+            // ✅ ADD THIS: Fetch updated payments for this GRN
+            const paymentsResponse = await api.get(`/grn/${selectedGRNForPayment.id}/payments`);
             setGRNPayments(prev => ({
                 ...prev,
-                [selectedGRNForPayment.id]: response.data
+                [selectedGRNForPayment.id]: paymentsResponse.data
             }));
+
+            // ✅ ADD THIS: Keep it expanded to show updated data
+            setExpandedGRNId(selectedGRNForPayment.id);
+
         } catch (error) {
             console.error("Failed to record payment:", error);
-            alert("Failed to record payment");
+            alert("Failed to record payment: " + (error.response?.data?.message || error.message));
         }
     };
 
@@ -552,8 +570,8 @@ export default function GRNPage() {
                                             <div className="flex-1">
                                                 <div className="font-semibold text-gray-800">{item.productName}</div>
                                                 <div className="text-sm text-gray-600">
-                                                    Qty: {item.quantity} | Cost: Rs. {item.costPrice.toFixed(2)} | 
-                                                    MRP: Rs. {item.productPrice.toFixed(2)} | 
+                                                    Qty: {item.quantity} | Cost: Rs. {item.costPrice.toFixed(2)} |
+                                                    MRP: Rs. {item.productPrice.toFixed(2)} |
                                                     Subtotal: Rs. {(item.costPrice * item.quantity).toFixed(2)}
                                                 </div>
                                                 {(item.manufactureDate || item.expiryDate) && (
@@ -862,7 +880,7 @@ export default function GRNPage() {
                                                             <div key={idx} className="text-sm p-2 bg-gray-50 rounded border border-gray-200">
                                                                 <div className="font-medium text-gray-800">{item.productName}</div>
                                                                 <div className="text-gray-600">
-                                                                    Qty: {item.quantity} × Rs. {item.costPrice?.toFixed(2)} = 
+                                                                    Qty: {item.quantity} × Rs. {item.costPrice?.toFixed(2)} =
                                                                     Rs. {(item.quantity * item.costPrice).toFixed(2)}
                                                                 </div>
                                                             </div>
@@ -888,9 +906,9 @@ export default function GRNPage() {
                                                                                 Rs. {payment.amount?.toFixed(2)}
                                                                             </div>
                                                                             <div className="text-gray-600">
-                                                                                {payment.paymentType === 'cash' ? 'Cash' : 
-                                                                                 payment.paymentType === 'cheque' ? `Cheque #${payment.chequeNumber}` : 
-                                                                                 'Bank Transfer'}
+                                                                                {payment.paymentType === 'cash' ? 'Cash' :
+                                                                                    payment.paymentType === 'cheque' ? `Cheque #${payment.chequeNumber}` :
+                                                                                        'Bank Transfer'}
                                                                             </div>
                                                                             {payment.notes && (
                                                                                 <div className="text-xs text-gray-500 mt-1">{payment.notes}</div>
@@ -911,7 +929,7 @@ export default function GRNPage() {
                                                 </div>
 
                                                 {/* Add Payment Button */}
-                                                {grn.paymentStatus !== 'paid' && (
+                                                {grn.paymentStatus !== 'paid' && (grn.totalAmount - grn.paidAmount) > 0 && ( // ✅ CHANGE THIS
                                                     <button
                                                         onClick={() => openPaymentModal(grn)}
                                                         className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-semibold flex items-center justify-center gap-2 shadow-md"
@@ -937,7 +955,7 @@ export default function GRNPage() {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
                         <h3 className="text-2xl font-bold mb-4 text-gray-800">Add New Product</h3>
-                        
+
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-semibold mb-2 text-gray-700">
@@ -1012,7 +1030,7 @@ export default function GRNPage() {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full p-6">
                         <h3 className="text-2xl font-bold mb-4 text-gray-800">Record Payment</h3>
-                        
+
                         <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
