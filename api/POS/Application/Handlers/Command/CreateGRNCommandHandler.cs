@@ -12,15 +12,18 @@ namespace POS.Application.Handlers.Command
         private readonly IGRNRepository _grnRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IGRNPaymentRepository _grnPaymentRepository;
 
         public CreateGRNCommandHandler(
             IGRNRepository grnRepository,
             IProductBatchRepository batchRepository,
-            IProductRepository productRepository)
+            IProductRepository productRepository,
+            IGRNPaymentRepository grnPaymentRepository)
         {
             _grnRepository = grnRepository;
             _batchRepository = batchRepository;
             _productRepository = productRepository;
+            _grnPaymentRepository = grnPaymentRepository;
         }
 
         public async Task<GRNDto> Handle(CreateGRNCommand request, CancellationToken cancellationToken)
@@ -48,6 +51,23 @@ namespace POS.Application.Handlers.Command
             };
 
             var created = await _grnRepository.AddAsync(grn);
+
+            // ✅ ADD THIS: Record initial payment if payment was made
+            if (request.PaidAmount > 0 && !string.IsNullOrEmpty(request.PaymentType))
+            {
+                var initialPayment = new GRNPayment
+                {
+                    GRNId = created.Id,
+                    PaymentType = request.PaymentType,
+                    Amount = request.PaidAmount,
+                    ChequeNumber = request.ChequeNumber,
+                    ChequeDate = request.ChequeDate,
+                    Notes = request.PaymentNotes,
+                    RecordedBy = request.ReceivedBy,
+                    PaymentDate = request.PaymentDate ?? DateTime.Now
+                };
+                await _grnPaymentRepository.AddAsync(initialPayment);
+            }
 
             // Create product batches and check for multiple prices
             foreach (var item in request.Items)
