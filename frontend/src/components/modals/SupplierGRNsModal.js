@@ -62,16 +62,13 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
     ? grns 
     : grns.filter(g => g.paymentStatus === filterStatus);
 
-  const totalGRNAmount = grns.reduce((sum, g) => sum + g.totalAmount, 0);
-  const totalPaid = grns.reduce((sum, g) => sum + g.paidAmount, 0);
-  const totalCredit = totalGRNAmount - totalPaid;
 
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50">
         <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex justify-between items-center p-6 border-b-2 border-gray-200 bg-gradient-to-r from-indigo-500 to-purple-600">
+          <div className="flex justify-between items-center p-2 border-b-2 border-gray-200 bg-gradient-to-r from-indigo-500 to-purple-600">
             <div>
               <h3 className="text-2xl font-bold text-white flex items-center gap-2">
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,17 +76,6 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
                 </svg>
                 {supplier.name} - GRN History
               </h3>
-              <div className="flex gap-4 mt-2 text-white text-sm">
-                <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                  Total GRNs: {grns.length}
-                </span>
-                <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                  Unpaid: {grns.filter(g => g.paymentStatus === 'unpaid').length}
-                </span>
-                <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                  Partial: {grns.filter(g => g.paymentStatus === 'partial').length}
-                </span>
-              </div>
             </div>
             <button
               onClick={onClose}
@@ -99,26 +85,6 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white border-2 border-blue-200 rounded-lg p-4 shadow-md">
-                <div className="text-xs text-blue-700 font-medium mb-1">Total GRN Amount</div>
-                <div className="text-2xl font-bold text-blue-900">Rs {totalGRNAmount.toFixed(2)}</div>
-              </div>
-              
-              <div className="bg-white border-2 border-green-200 rounded-lg p-4 shadow-md">
-                <div className="text-xs text-green-700 font-medium mb-1">Total Paid</div>
-                <div className="text-2xl font-bold text-green-900">Rs {totalPaid.toFixed(2)}</div>
-              </div>
-              
-              <div className="bg-white border-2 border-red-200 rounded-lg p-4 shadow-md">
-                <div className="text-xs text-red-700 font-medium mb-1">Total Credit Outstanding</div>
-                <div className="text-2xl font-bold text-red-900">Rs {totalCredit.toFixed(2)}</div>
-              </div>
-            </div>
           </div>
 
           {/* Filter Section */}
@@ -263,7 +229,7 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
           </div>
 
           {/* Footer */}
-          <div className="border-t-2 border-gray-200 bg-gray-50 p-4 flex justify-end">
+          <div className="border-t-2 border-gray-200 bg-gray-50 p-2 flex justify-end">
             <button
               onClick={onClose}
               className="bg-gray-600 text-white px-8 py-3 rounded-lg hover:bg-gray-700 transition font-semibold flex items-center gap-2 shadow-md"
