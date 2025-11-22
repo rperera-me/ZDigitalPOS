@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
 import { setCustomers } from "../app/posSlice";
-import { AddCustomerModal } from "../components/modals";
-// import ViewCustomerPurchasesModal from "../components/modals/ViewCustomerPurchasesModal";
+import { AddCustomerModal, ViewCustomerPurchasesModal } from "../components/modals";
 
 export default function AdminCustomersPage() {
   const dispatch = useDispatch();
@@ -216,14 +215,14 @@ export default function AdminCustomersPage() {
       />
 
       {/* View Purchases Modal */}
-      {/* <ViewCustomerPurchasesModal
+      <ViewCustomerPurchasesModal
         isOpen={showPurchasesModal}
         onClose={() => {
           setShowPurchasesModal(false);
           setViewingCustomer(null);
         }}
         customer={viewingCustomer}
-      /> */}
+      />
     </div>
   );
 }
@@ -234,11 +233,10 @@ function TabButton({ active, onClick, count, label, color }) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 px-6 py-4 font-semibold transition ${
-        active
+      className={`flex-1 px-6 py-4 font-semibold transition ${active
           ? `bg-${colorClass}-50 text-${colorClass}-700 border-b-2 border-${colorClass}-500`
           : "text-gray-600 hover:bg-gray-50"
-      }`}
+        }`}
     >
       {label} ({count})
     </button>
