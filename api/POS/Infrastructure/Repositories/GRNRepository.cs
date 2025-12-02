@@ -144,16 +144,25 @@ namespace POS.Infrastructure.Repositories
 
         public async Task UpdatePaymentStatusAsync(int grnId, string status, decimal paidAmount, decimal creditAmount)
         {
+            // ✅ FIXED: Ensure proper SQL update with all payment fields
             var sql = @"UPDATE GRNs 
-                SET PaymentStatus = @Status, 
-                    PaidAmount = @PaidAmount, 
-                    CreditAmount = @CreditAmount,
-                    PaymentType = CASE WHEN @Status = 'unpaid' THEN NULL ELSE PaymentType END,
-                    PaymentDate = CASE WHEN @Status = 'unpaid' THEN NULL ELSE ISNULL(PaymentDate, GETDATE()) END
-                WHERE Id = @GRNId";
+        SET PaymentStatus = @Status, 
+            PaidAmount = @PaidAmount, 
+            CreditAmount = @CreditAmount,
+            -- Update PaymentType and PaymentDate based on status
+            PaymentType = CASE 
+                WHEN @Status = 'unpaid' THEN NULL 
+                ELSE COALESCE(PaymentType, 'cash') 
+            END,
+            PaymentDate = CASE 
+                WHEN @Status = 'unpaid' THEN NULL 
+                WHEN PaymentDate IS NULL AND @Status != 'unpaid' THEN GETDATE()
+                ELSE PaymentDate 
+            END
+        WHERE Id = @GRNId";
 
             using var connection = _context.CreateConnection();
-            await connection.ExecuteAsync(sql, new
+            var rowsAffected = await connection.ExecuteAsync(sql, new
             {
                 GRNId = grnId,
                 Status = status,

@@ -29,6 +29,17 @@ namespace POS.Application.Handlers.Command
         public async Task<GRNDto> Handle(CreateGRNCommand request, CancellationToken cancellationToken)
         {
             var grnNumber = await _grnRepository.GenerateGRNNumberAsync();
+            var totalAmount = request.Items.Sum(i => i.CostPrice * i.Quantity);
+
+            // ✅ FIXED: Calculate payment status and credit amount
+            var paidAmount = request.PaidAmount;
+            var creditAmount = totalAmount - paidAmount;
+
+            string paymentStatus = "unpaid";
+            if (paidAmount >= totalAmount)
+                paymentStatus = "paid";
+            else if (paidAmount > 0)
+                paymentStatus = "partial";
 
             var grn = new GRN
             {
@@ -37,7 +48,11 @@ namespace POS.Application.Handlers.Command
                 ReceivedBy = request.ReceivedBy,
                 ReceivedDate = DateTime.Now,
                 Notes = request.Notes,
-                TotalAmount = request.Items.Sum(i => i.CostPrice * i.Quantity),
+                TotalAmount = totalAmount,
+                // ✅ ADD THESE FIELDS
+                PaymentStatus = paymentStatus,
+                PaidAmount = paidAmount,
+                CreditAmount = creditAmount > 0 ? creditAmount : 0,
                 Items = request.Items.Select(i => new GRNItem
                 {
                     ProductId = i.ProductId,
@@ -52,7 +67,7 @@ namespace POS.Application.Handlers.Command
 
             var created = await _grnRepository.AddAsync(grn);
 
-            // ✅ ADD THIS: Record initial payment if payment was made
+            // ✅ Record initial payment if payment was made
             if (request.PaidAmount > 0 && !string.IsNullOrEmpty(request.PaymentType))
             {
                 var initialPayment = new GRNPayment
@@ -98,7 +113,7 @@ namespace POS.Application.Handlers.Command
                 {
                     product.StockQuantity += item.Quantity;
 
-                    // ✅ CHECK FOR MULTIPLE PRODUCT PRICES
+                    // Check for multiple product prices
                     var existingBatches = await _batchRepository.GetActiveBatchesByProductIdAsync(item.ProductId);
                     var distinctPrices = existingBatches
                         .Select(b => Math.Round(b.ProductPrice, 2))
@@ -120,6 +135,10 @@ namespace POS.Application.Handlers.Command
                 ReceivedBy = created.ReceivedBy,
                 TotalAmount = created.TotalAmount,
                 Notes = created.Notes,
+                // ✅ INCLUDE PAYMENT STATUS FIELDS IN RESPONSE
+                PaymentStatus = paymentStatus,
+                PaidAmount = paidAmount,
+                CreditAmount = creditAmount > 0 ? creditAmount : 0,
                 Items = created.Items.Select(i => new GRNItemDto
                 {
                     Id = i.Id,
@@ -136,7 +155,6 @@ namespace POS.Application.Handlers.Command
 
         private string GenerateBatchNumber(string grnNumber)
         {
-            // Format: GRN20250113-001
             return $"{grnNumber}-{DateTime.Now:HHmmss}";
         }
     }
