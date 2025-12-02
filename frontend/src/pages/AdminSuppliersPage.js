@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../api/axios";
 import { setSuppliers } from "../app/posSlice";
-import {SupplierGRNsModal} from "../components/modals";
+import { SupplierGRNsModal } from "../components/modals";
 
 export default function AdminSuppliersPage() {
   const dispatch = useDispatch();
@@ -38,13 +38,14 @@ export default function AdminSuppliersPage() {
   const fetchAllSuppliersDetails = async () => {
     setLoadingDetails(true);
     const details = {};
-    
+
     try {
       await Promise.all(
         suppliers.map(async (supplier) => {
           try {
             const response = await api.get(`/supplier/${supplier.id}/details`);
             details[supplier.id] = response.data;
+            console.log(`Supplier ${supplier.id} details:`, response.data);
           } catch (error) {
             console.error(`Failed to fetch details for supplier ${supplier.id}:`, error);
             details[supplier.id] = {
@@ -58,6 +59,7 @@ export default function AdminSuppliersPage() {
         })
       );
       setSuppliersDetails(details);
+      console.log("All supplier details loaded:", details);
     } finally {
       setLoadingDetails(false);
     }
@@ -74,7 +76,7 @@ export default function AdminSuppliersPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     const supplierData = {
       name,
       contactPerson,
@@ -117,6 +119,22 @@ export default function AdminSuppliersPage() {
     setSelectedSupplier(supplier);
     setShowGRNsModal(true);
   };
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log("Refreshing suppliers after GRN payment update");
+      fetchSuppliers();
+      if (suppliers.length > 0) {
+        fetchAllSuppliersDetails();
+      }
+    };
+
+    window.addEventListener('refreshSuppliers', handleRefresh);
+
+    return () => {
+      window.removeEventListener('refreshSuppliers', handleRefresh);
+    };
+  }, [suppliers.length]);
 
   return (
     <div className="p-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">

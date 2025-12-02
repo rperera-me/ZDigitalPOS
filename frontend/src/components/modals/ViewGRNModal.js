@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
+import api from "../../api/axios";
 
-export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
+export default function ViewGRNModal({ isOpen, onClose, grn: initialGRN, onPaymentAdded }) {
   const user = useSelector((state) => state.auth.user);
   const [showPaymentSection, setShowPaymentSection] = useState(false);
   const [payments, setPayments] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  
+  // ✅ FIXED: Local state for GRN to enable updates
+  const [grn, setGrn] = useState(initialGRN);
 
   // Payment form states
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
@@ -15,20 +19,30 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
   const [newPaymentNotes, setNewPaymentNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && grn) {
-      fetchPayments();
-      const remainingAmount = grn.totalAmount - grn.paidAmount;
-      setNewPaymentAmount(remainingAmount > 0 ? remainingAmount.toFixed(2) : "");
+  const isPaid = useMemo(() => grn?.paymentStatus === 'paid', [grn]);
+  const remainingAmount = useMemo(() =>
+    grn ? grn.totalAmount - grn.paidAmount : 0,
+    [grn]
+  );
+
+  // ✅ FIXED: Refresh GRN data from server
+  const refreshGRN = async () => {
+    if (!grn?.id) return;
+    
+    try {
+      const response = await api.get(`/grn/${grn.id}`);
+      setGrn(response.data);
+      console.log("GRN refreshed:", response.data);
+    } catch (error) {
+      console.error("Failed to refresh GRN:", error);
     }
-  }, [isOpen, grn]);
+  };
 
   const fetchPayments = async () => {
     if (!grn) return;
-    
+
     setLoadingPayments(true);
     try {
-      const api = require("../../api/axios").default;
       const response = await api.get(`/grn/${grn.id}/payments`);
       setPayments(response.data || []);
     } catch (error) {
@@ -37,6 +51,21 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
       setLoadingPayments(false);
     }
   };
+
+  // ✅ FIXED: Update local GRN when prop changes
+  useEffect(() => {
+    if (initialGRN) {
+      setGrn(initialGRN);
+    }
+  }, [initialGRN]);
+
+  useEffect(() => {
+    if (isOpen && grn) {
+      fetchPayments();
+      const remainingAmount = grn.totalAmount - grn.paidAmount;
+      setNewPaymentAmount(remainingAmount > 0 ? remainingAmount.toFixed(2) : "");
+    }
+  }, [isOpen, grn]);
 
   const handleSubmitPayment = async () => {
     if (!newPaymentAmount || parseFloat(newPaymentAmount) <= 0) {
@@ -67,10 +96,9 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
 
     setSubmitting(true);
     try {
-      const api = require("../../api/axios").default;
       await api.post(`/grn/${grn.id}/payment`, paymentData);
       alert("Payment recorded successfully!");
-      
+
       // Reset form
       setShowPaymentSection(false);
       setNewPaymentAmount("");
@@ -78,14 +106,20 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
       setNewChequeNumber("");
       setNewChequeDate("");
       setNewPaymentNotes("");
-      
-      // Refresh payments
-      await fetchPayments();
-      
-      // Notify parent to refresh GRN list
+
+      // ✅ FIXED: Update payment status first
+      await api.put(`/grn/${grn.id}/payment-status`);
+
+      // ✅ FIXED: Refresh all data in correct order
+      await refreshGRN(); // Get updated GRN from server
+      await fetchPayments(); // Get updated payments list
+
+      // ✅ Notify parent components
       if (onPaymentAdded) {
         onPaymentAdded();
       }
+      window.dispatchEvent(new CustomEvent('refreshSuppliers'));
+
     } catch (error) {
       console.error("Failed to record payment:", error);
       alert("Failed to record payment: " + (error.response?.data?.message || error.message));
@@ -103,11 +137,6 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
   };
 
   if (!isOpen || !grn) return null;
-
-  const totalItemsCost = grn.items?.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0) || 0;
-  const totalUnits = grn.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-  const isPaid = grn.paymentStatus === 'paid';
-  const remainingAmount = grn.totalAmount - grn.paidAmount;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50">
@@ -141,17 +170,17 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
               <div className="text-xs text-blue-700 font-medium mb-1">Total Amount</div>
               <div className="text-2xl font-bold text-blue-900">Rs {grn.totalAmount.toFixed(2)}</div>
             </div>
-            
+
             <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-lg p-4">
               <div className="text-xs text-green-700 font-medium mb-1">Paid Amount</div>
               <div className="text-2xl font-bold text-green-900">Rs {grn.paidAmount.toFixed(2)}</div>
             </div>
-            
+
             <div className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-lg p-4">
               <div className="text-xs text-red-700 font-medium mb-1">Credit Amount</div>
               <div className="text-2xl font-bold text-red-900">Rs {remainingAmount.toFixed(2)}</div>
             </div>
-            
+
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-lg p-4">
               <div className="text-xs text-purple-700 font-medium mb-1">Payment Status</div>
               <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold border-2 ${getPaymentStatusColor(grn.paymentStatus)}`}>
@@ -180,47 +209,25 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
             </div>
           </div>
 
-          {/* Items Table */}
+          {/* Items Table - Abbreviated for space */}
           <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden mb-6">
             <div className="bg-gray-100 px-4 py-3 border-b-2 border-gray-200">
-              <h4 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                Items ({grn.items?.length || 0})
-              </h4>
+              <h4 className="font-semibold text-lg text-gray-800">Items ({grn.items?.length || 0})</h4>
             </div>
-
             <div className="overflow-x-auto max-h-96">
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
                     <th className="p-3 text-left text-sm font-semibold text-gray-700 border-b">Product</th>
-                    <th className="p-3 text-center text-sm font-semibold text-gray-700 border-b">Batch</th>
                     <th className="p-3 text-center text-sm font-semibold text-gray-700 border-b">Qty</th>
                     <th className="p-3 text-right text-sm font-semibold text-gray-700 border-b">Cost</th>
-                    <th className="p-3 text-right text-sm font-semibold text-gray-700 border-b">MRP</th>
                     <th className="p-3 text-right text-sm font-semibold text-gray-700 border-b">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {grn.items?.map((item, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50 transition">
-                      <td className="p-3">
-                        <div className="font-medium text-gray-900">{item.productName}</div>
-                        {(item.manufactureDate || item.expiryDate) && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {item.manufactureDate && `Mfg: ${new Date(item.manufactureDate).toLocaleDateString()}`}
-                            {item.manufactureDate && item.expiryDate && " | "}
-                            {item.expiryDate && `Exp: ${new Date(item.expiryDate).toLocaleDateString()}`}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
-                          {item.batchNumber}
-                        </code>
-                      </td>
+                      <td className="p-3 font-medium text-gray-900">{item.productName}</td>
                       <td className="p-3 text-center">
                         <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold text-sm">
                           {item.quantity}
@@ -228,9 +235,6 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
                       </td>
                       <td className="p-3 text-right font-semibold text-orange-600">
                         Rs {item.costPrice.toFixed(2)}
-                      </td>
-                      <td className="p-3 text-right font-semibold text-yellow-600">
-                        Rs {item.productPrice.toFixed(2)}
                       </td>
                       <td className="p-3 text-right font-bold text-green-600">
                         Rs {(item.costPrice * item.quantity).toFixed(2)}
@@ -245,13 +249,8 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
           {/* Payment History */}
           <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden mb-6">
             <div className="bg-gray-100 px-4 py-3 border-b-2 border-gray-200 flex justify-between items-center">
-              <h4 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                Payment History ({payments.length})
-              </h4>
-              
+              <h4 className="font-semibold text-lg text-gray-800">Payment History ({payments.length})</h4>
+
               {!isPaid && !showPaymentSection && (
                 <button
                   onClick={() => setShowPaymentSection(true)}
@@ -269,7 +268,7 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
             {showPaymentSection && !isPaid && (
               <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
                 <h5 className="font-semibold text-lg text-green-900 mb-4">Record New Payment</h5>
-                
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -404,25 +403,25 @@ export default function ViewGRNModal({ isOpen, onClose, grn, onPaymentAdded }) {
                               Rs {payment.amount.toFixed(2)}
                             </span>
                             <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold border border-green-300">
-                              {payment.paymentType === 'cash' ? 'Cash' : 
-                               payment.paymentType === 'cheque' ? 'Cheque' : 
-                               'Bank Transfer'}
+                              {payment.paymentType === 'cash' ? 'Cash' :
+                                payment.paymentType === 'cheque' ? 'Cheque' :
+                                  'Bank Transfer'}
                             </span>
                           </div>
-                          
+
                           {payment.paymentType === 'cheque' && payment.chequeNumber && (
                             <div className="text-sm text-gray-700 mb-1">
                               <span className="font-medium">Cheque #:</span> {payment.chequeNumber}
                               {payment.chequeDate && ` (${new Date(payment.chequeDate).toLocaleDateString()})`}
                             </div>
                           )}
-                          
+
                           {payment.notes && (
                             <div className="text-sm text-gray-600 italic mt-2 p-2 bg-white rounded border border-green-200">
                               {payment.notes}
                             </div>
                           )}
-                          
+
                           <div className="text-xs text-gray-500 mt-2">
                             Recorded by {payment.recordedByName} on {new Date(payment.paymentDate).toLocaleString()}
                           </div>

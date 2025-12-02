@@ -58,8 +58,8 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
 
   if (!isOpen || !supplier) return null;
 
-  const filteredGRNs = filterStatus === "all" 
-    ? grns 
+  const filteredGRNs = filterStatus === "all"
+    ? grns
     : grns.filter(g => g.paymentStatus === filterStatus);
 
 
@@ -94,41 +94,37 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
               <div className="flex gap-2">
                 <button
                   onClick={() => setFilterStatus("all")}
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                    filterStatus === "all"
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${filterStatus === "all"
                       ? "bg-indigo-600 text-white shadow-md"
                       : "bg-white text-gray-700 border-2 border-gray-300 hover:border-indigo-400"
-                  }`}
+                    }`}
                 >
                   All ({grns.length})
                 </button>
                 <button
                   onClick={() => setFilterStatus("unpaid")}
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                    filterStatus === "unpaid"
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${filterStatus === "unpaid"
                       ? "bg-red-600 text-white shadow-md"
                       : "bg-white text-gray-700 border-2 border-gray-300 hover:border-red-400"
-                  }`}
+                    }`}
                 >
                   Unpaid ({grns.filter(g => g.paymentStatus === 'unpaid').length})
                 </button>
                 <button
                   onClick={() => setFilterStatus("partial")}
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                    filterStatus === "partial"
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${filterStatus === "partial"
                       ? "bg-orange-600 text-white shadow-md"
                       : "bg-white text-gray-700 border-2 border-gray-300 hover:border-orange-400"
-                  }`}
+                    }`}
                 >
                   Partial ({grns.filter(g => g.paymentStatus === 'partial').length})
                 </button>
                 <button
                   onClick={() => setFilterStatus("paid")}
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                    filterStatus === "paid"
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${filterStatus === "paid"
                       ? "bg-green-600 text-white shadow-md"
                       : "bg-white text-gray-700 border-2 border-gray-300 hover:border-green-400"
-                  }`}
+                    }`}
                 >
                   Paid ({grns.filter(g => g.paymentStatus === 'paid').length})
                 </button>
@@ -243,15 +239,20 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
         </div>
       </div>
 
-      {/* View GRN Modal */}
       <ViewGRNModal
         isOpen={showGRNModal}
         onClose={() => {
           setShowGRNModal(false);
           setSelectedGRN(null);
+          fetchGRNs(); // ✅ This already exists, good!
         }}
         grn={selectedGRN}
-        onPaymentAdded={handlePaymentAdded}
+        onPaymentAdded={(updatedGRN) => {
+          // ✅ ADD THIS: Update the selectedGRN with new data
+          setSelectedGRN(updatedGRN);
+          // ✅ Also refresh the list
+          fetchGRNs();
+        }}
       />
     </>
   );

@@ -146,9 +146,17 @@ export default function GRNPage() {
             }
         }
 
-        const finalPaymentStatus = paymentStatus === "unpaid"
-            ? "unpaid"
-            : (creditAmount > 0 ? "partial" : "paid");
+        // ✅ FIXED: Calculate payment status correctly
+        const totalAmount = items.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
+        const paidAmt = parseFloat(paidAmount || 0);
+        const creditAmt = totalAmount - paidAmt;
+
+        let finalPaymentStatus = "unpaid";
+        if (paidAmt >= totalAmount) {
+            finalPaymentStatus = "paid";
+        } else if (paidAmt > 0) {
+            finalPaymentStatus = "partial";
+        }
 
         const grnData = {
             supplierId: parseInt(supplierId),
@@ -156,7 +164,7 @@ export default function GRNPage() {
             notes,
             items,
             paymentStatus: finalPaymentStatus,
-            paidAmount: parseFloat(paidAmount || 0),
+            paidAmount: paidAmt,
             paymentType: paymentStatus !== "unpaid" ? paymentType : null,
             paymentDate: paymentStatus !== "unpaid" ? paymentDate : null,
             chequeNumber: paymentType === "cheque" ? chequeNumber : null,
@@ -169,10 +177,14 @@ export default function GRNPage() {
             alert("GRN created successfully!");
             resetForm();
 
-            // ✅ CHANGE THIS: Refresh the list if supplier was selected
+            // ✅ FIXED: Refresh GRN list AND supplier details
             if (selectedSupplierFilter) {
                 await fetchGRNsBySupplier(selectedSupplierFilter);
             }
+
+            // ✅ NEW: Trigger parent component to refresh supplier details
+            // This ensures the supplier list shows updated credit amounts
+            window.dispatchEvent(new CustomEvent('refreshSuppliers'));
         } catch (err) {
             alert("Failed to create GRN: " + (err.response?.data?.message || err.message));
             console.error(err);
