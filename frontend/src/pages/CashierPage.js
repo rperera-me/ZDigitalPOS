@@ -63,7 +63,7 @@ export default function CashierPage() {
 
   const [isHeldSalesModalOpen, setIsHeldSalesModalOpen] = useState(false);
 
-  const [customerType, setCustomerType] = useState("walk-in"); // walk-in, loyalty, wholesale
+  const [customerType, setCustomerType] = useState("walk-in");
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
 
@@ -78,6 +78,10 @@ export default function CashierPage() {
   const [quantityMode, setQuantityMode] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+
+  const [selectedReceiptTemplate, setSelectedReceiptTemplate] = useState(
+    storeSetting.defaultReceiptTemplate || 'ReceiptTemplate'
+  );
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -97,7 +101,7 @@ export default function CashierPage() {
   }, [products, searchTerm]);
 
   const getProductCount = () => {
-    return saleItems.length; // Number of different products
+    return saleItems.length;
   };
 
   // Helper functions
@@ -115,12 +119,9 @@ export default function CashierPage() {
     const code = barcode || barcodeInput.trim();
     if (!code) return;
 
-    console.log("🔍 Barcode scan:", code, "Quantity mode:", quantityMode);
-
     api.get(`/product/barcode/${code}`)
       .then((res) => {
         if (res.data) {
-          console.log("✅ Product found:", res.data.name);
 
           // If quantity mode is ON or product has multiple prices, show price modal
           if (quantityMode || res.data.hasMultipleProductPrices) {
@@ -201,26 +202,20 @@ export default function CashierPage() {
   }
 
   function addToCart(product, price, quantity, sourceId = null) {
-    console.log("🛒 Adding to cart:", {
-      product: product.name || product,
-      price,
-      quantity,
-      sourceId
-    });
-
+    console.log("product", product);
     dispatch(
       addSaleItem({
         productId: typeof product === 'object' ? product.id : product,
         name: typeof product === 'object' ? product.name : '',
         price: price,
         quantity: quantity,
-        sourceId: sourceId // Changed from batchId
+        sourceId: sourceId,
+        regularPrice: typeof product === 'object' ? (product.regularPrice || product.maxSellingPrice || price) : price // ADD THIS
       })
     );
   }
 
   function handlePriceSelect(variant, price, quantity) {
-    console.log("✅ Price selected:", { price, quantity });
 
     // Get source ID (no batch logic)
     const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
@@ -235,25 +230,16 @@ export default function CashierPage() {
   }
 
   function onAddProduct(product) {
-    console.log("🔍 Adding product:", product.name, "HasMultipleProductPrices:", product.hasMultipleProductPrices);
-
     // Check if product has multiple PRICES (not batches)
     if (product.hasMultipleProductPrices) {
-      console.log("💰 Product has multiple prices, fetching variants...");
 
       api.get(`/product/${product.id}/price-variants`)
         .then((res) => {
-          console.log("📊 Price variants received:", res.data);
-
           if (res.data && res.data.length > 1) {
-            // Multiple prices exist - SHOW MODAL
-            console.log("✅ Showing price selection modal");
             setPriceVariants(res.data);
             setSelectedProduct(product);
             setShowPriceModal(true);
           } else if (res.data && res.data.length === 1) {
-            // Only one price - add directly
-            console.log("✅ Single price - adding directly");
             const variant = res.data[0];
             const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
 
@@ -262,8 +248,6 @@ export default function CashierPage() {
 
             addToCart(product, price, 1, sourceId);
           } else {
-            // No variants - use default prices (fallback)
-            console.log("⚠️ No price variants - using min prices");
             const price = customerType === "wholesale"
               ? (product.minWholesalePrice || product.minSellingPrice || 0)
               : (product.minSellingPrice || 0);
@@ -279,8 +263,6 @@ export default function CashierPage() {
           addToCart(product, price, 1, null);
         });
     } else {
-      // No multiple prices - use min/default prices
-      console.log("📝 Single price product - using min prices");
       const price = customerType === "wholesale"
         ? (product.minWholesalePrice || product.minSellingPrice || 0)
         : (product.minSellingPrice || 0);
@@ -359,12 +341,13 @@ export default function CashierPage() {
     const salePayload = {
       cashierId: user?.id || 1,
       customerId: paymentData.customer?.id || null,
-      saleItems: saleItems.map(({ productId, name, price, quantity, sourceId }) => ({
+      saleItems: saleItems.map(({ productId, name, price, quantity, sourceId, regularPrice }) => ({
         productId,
         name,
         price,
         quantity,
-        sourceId
+        sourceId,
+        regularPrice: regularPrice || price
       })),
       totalAmount: paymentData.totalAmount,
       discountType: paymentData.discountType,
@@ -373,7 +356,7 @@ export default function CashierPage() {
       finalAmount: paymentData.finalAmount,
       isHeld: false,
       paymentType: paymentData.payments.length > 1 ? "Mixed" : paymentData.payments[0]?.type || "Cash",
-      payments: paymentData.payments, // Array of payment methods
+      payments: paymentData.payments,
       amountPaid: paymentData.finalAmount,
       change: paymentData.balance,
       date: new Date(),
@@ -381,25 +364,29 @@ export default function CashierPage() {
 
     if (isOnline()) {
       api.post("/sale", salePayload).then((response) => {
-        console.log(salePayload);
         // Update customer credit if credit payment was made
         if (paymentData.customer && paymentData.payments.some(p => p.type === "Credit")) {
           const creditPayment = paymentData.payments.find(p => p.type === "Credit");
           const newCreditBalance = (paymentData.customer.creditBalance || 0) + creditPayment.amount;
 
-          // Update customer credit balance
           api.put(`/customer/${paymentData.customer.id}`, {
             ...paymentData.customer,
             creditBalance: newCreditBalance
           });
         }
 
-        // Show receipt
-        i18n.changeLanguage(storeSetting.receiptLanguage || "en");
+        // Show receipt with COMPLETE data
+        i18n.changeLanguage(storeSetting.receiptLanguage || "si");
         setReceiptData({
           ...salePayload,
+          id: response.data.id || `INV-${Date.now()}`,
+          invoiceNo: response.data.invoiceNo || `INV-${Date.now()}`,
           storeName: storeSetting.storeName,
-          cashier: user?.username || "Cashier"
+          storeAddress: storeSetting.storeAddress,
+          storeContact: storeSetting.storeContact,
+          cashier: user?.username || "",
+          customer: paymentData.customer,
+          date: new Date(),
         });
         setIsReceiptOpen(true);
         setIsPaymentOpen(false);
@@ -411,13 +398,19 @@ export default function CashierPage() {
         alert("Failed to process sale: " + (err.response?.data?.message || err.message));
       });
     } else {
-      // Offline mode
+      // Offline mode - same complete data
       saveSaleOffline(salePayload);
-      i18n.changeLanguage(storeSetting.receiptLanguage || "en");
+      i18n.changeLanguage(storeSetting.receiptLanguage || "si");
       setReceiptData({
         ...salePayload,
+        id: `INV-OFFLINE-${Date.now()}`,
+        invoiceNo: `INV-OFFLINE-${Date.now()}`,
         storeName: storeSetting.storeName,
-        cashier: user?.username || "Cashier"
+        storeAddress: storeSetting.storeAddress,
+        storeContact: storeSetting.storeContact,
+        cashier: user?.username || "Cashier",
+        customer: paymentData.customer,
+        date: new Date(),
       });
       setIsReceiptOpen(true);
       setIsPaymentOpen(false);
@@ -435,7 +428,14 @@ export default function CashierPage() {
       api.get("/sale/last").then((res) => {
         if (res.data) {
           i18n.changeLanguage(storeSetting.receiptLanguage || "en");
-          setReceiptData(res.data);
+          setReceiptData({
+            ...res.data,
+            storeName: storeSetting.storeName, // ADD
+            storeAddress: storeSetting.storeAddress, // ADD
+            storeContact: storeSetting.storeContact, // ADD
+            cashier: res.data.cashier?.username || res.data.cashier || "", // UPDATED
+            invoiceNo: res.data.invoiceNo || res.data.id || "", // ADD
+          });
           setIsReceiptOpen(true);
         } else {
           alert("No previous sale found to reprint.");
@@ -462,7 +462,16 @@ export default function CashierPage() {
   function handleViewLastSale() {
     api.get("/sale/last").then((res) => {
       if (res.data) {
-        setLastSale(res.data);
+        // Format the sale data properly for display
+        const formattedSale = {
+          ...res.data,
+          storeName: storeSetting.storeName, // ADD
+          storeAddress: storeSetting.storeAddress, // ADD
+          storeContact: storeSetting.storeContact, // ADD
+          cashier: res.data.cashier?.username || res.data.cashier || "", // UPDATED
+          invoiceNo: res.data.invoiceNo || res.data.id || "", // ADD
+        };
+        setLastSale(formattedSale);
         setIsLastSaleModalOpen(true);
       } else {
         alert("No previous sale found.");
@@ -530,7 +539,7 @@ export default function CashierPage() {
 
   useEffect(() => {
     const handleOpenCustomerModal = () => {
-      setCustomerType('loyalty'); // Or 'wholesale' based on your preference
+      setCustomerType('loyalty');
       setIsCustomerModalOpen(true);
     };
 
@@ -1065,8 +1074,12 @@ export default function CashierPage() {
       <ReceiptModal
         ref={receiptRef}
         isOpen={isReceiptOpen}
-        onClose={() => setIsReceiptOpen(false)}
+        onClose={() => {
+          setIsReceiptOpen(false);
+          refocusBarcodeInput();
+        }}
         saleData={receiptData}
+        templateName={selectedReceiptTemplate}
       />
 
       {/* LAST SALE VIEW MODAL */}
@@ -1098,7 +1111,6 @@ export default function CashierPage() {
       <PriceSelectionModal
         isOpen={showPriceModal}
         onClose={() => {
-          console.log("❌ Modal closed");
           setShowPriceModal(false);
           setSelectedProduct(null);
           setPriceVariants([]);

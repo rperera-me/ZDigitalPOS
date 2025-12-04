@@ -10,8 +10,7 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
     const getPriceForCustomer = (variant) => {
         switch (customerType) {
             case "wholesale":
-                return variant.wholesalePrice || variant.sellingPrice;
-            case "retail":
+                return variant.wholesalePrice;
             default:
                 return variant.sellingPrice;
         }

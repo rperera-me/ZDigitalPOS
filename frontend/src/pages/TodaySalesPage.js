@@ -39,13 +39,10 @@ export default function TodaySalesPage({ isOpen, onClose }) {
                 }
             });
 
-            console.log(response);
-
             // Filter by current user (cashier)
             const userSales = response.data.filter(
                 sale => !sale.isHeld
             );
-            console.log(userSales, user);
             setSales(userSales);
             calculateStats(userSales);
         } catch (error) {

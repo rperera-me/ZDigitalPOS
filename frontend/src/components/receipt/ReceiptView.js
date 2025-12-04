@@ -1,17 +1,25 @@
 import React, { useMemo } from "react";
 import Handlebars from "handlebars";
-import { receiptTemplate } from "./templates/ReceiptTemplate";
 import { useTranslation } from "react-i18next";
 import "./ReceiptView.css";
 
-// Register i18n helper
+// Import all available templates
+import { receiptTemplate } from "./templates/ReceiptTemplate";
+import { minimalReceiptTemplate } from "./templates/MinimalReceiptTemplate";
+
+// Template registry
+const TEMPLATES = {
+  ReceiptTemplate: receiptTemplate,
+  MinimalReceipt: minimalReceiptTemplate
+};
+
+// Register Handlebars helpers once
 if (!Handlebars.helpers.i18n) {
   Handlebars.registerHelper("i18n", function(key, options) {
     return options.data.root.i18n(key);
   });
 }
 
-// Register formatCurrency helper
 if (!Handlebars.helpers.formatCurrency) {
   Handlebars.registerHelper("formatCurrency", function(value) {
     const num = parseFloat(value) || 0;
@@ -19,28 +27,37 @@ if (!Handlebars.helpers.formatCurrency) {
   });
 }
 
-// Register eq helper for equality comparison
 if (!Handlebars.helpers.eq) {
   Handlebars.registerHelper("eq", function(a, b) {
     return a === b;
   });
 }
 
-// Register gt helper for greater than comparison
 if (!Handlebars.helpers.gt) {
   Handlebars.registerHelper("gt", function(a, b) {
     return a > b;
   });
 }
 
-export default function ReceiptView({ saleData }) {
+/**
+ * ReceiptView Component
+ * Renders receipt preview using selected template
+ * 
+ * @param {Object} saleData - Sale transaction data
+ * @param {string} templateName - Template to use (default: 'ReceiptTemplate')
+ */
+export default function ReceiptView({ saleData, templateName = 'ReceiptTemplate' }) {
   const { t } = useTranslation();
 
   const receiptHtml = useMemo(() => {
     if (!saleData) return "";
     
+    // Get the selected template
+    const selectedTemplate = TEMPLATES[templateName] || receiptTemplate;
+
     // Calculate points earned in this sale
-    const pointsEarned = saleData.customer?.type === "loyalty" && saleData.customer?.creditBalance <= 0
+    const pointsEarned = saleData.customer?.type === "loyalty" && 
+                         saleData.customer?.creditBalance <= 0
       ? Math.floor(saleData.finalAmount / 100)
       : 0;
 
@@ -56,6 +73,9 @@ export default function ReceiptView({ saleData }) {
       return sum + ((regularPrice - sellingPrice) * quantity);
     }, 0) || 0;
 
+    // Calculate tax if needed
+    const taxAmount = saleData.taxAmount || 0;
+
     // Enhance items with calculated totals and regular prices
     const enhancedItems = (saleData.saleItems || []).map(item => ({
       ...item,
@@ -63,31 +83,38 @@ export default function ReceiptView({ saleData }) {
       total: parseFloat(item.price) * parseFloat(item.quantity || 1)
     }));
 
-    const template = Handlebars.compile(receiptTemplate);
+    // Compile the selected template
+    const template = Handlebars.compile(selectedTemplate);
+    
+    // Prepare data for template
     const data = {
-      storeName: saleData.storeName || "Your Store Name",
-      storeAddress: saleData.storeAddress || "No 07 Bandararayaka Mawatha Alawwa",
-      storeContact: saleData.storeContact || "Tel: 0714373020 | 0714904322",
-      invoiceNo: saleData.invoiceNo || saleData.id || "IN-1-1-1",
+      storeName: saleData.storeName || "",
+      storeAddress: saleData.storeAddress || "",
+      storeContact: saleData.storeContact || "",
+      invoiceNo: saleData.invoiceNo || saleData.id || "",
       date: new Date(saleData.date).toLocaleString(),
-      cashier: saleData.cashier || "Cashier #1",
+      cashier: saleData.cashier || "",
       customer: saleData.customer || null,
       items: enhancedItems,
       totalAmount: saleData.totalAmount,
       discountType: saleData.discountType,
       discountValue: saleData.discountValue,
       discountAmount: saleData.discountAmount || 0,
+      taxAmount: taxAmount,
       finalAmount: saleData.finalAmount || saleData.totalAmount,
       totalPaid: totalPaid,
-      payments: saleData.payments || [{ type: saleData.paymentType, amount: saleData.amountPaid }],
+      payments: saleData.payments || [{ 
+        type: saleData.paymentType || 'Cash', 
+        amount: saleData.amountPaid || totalPaid 
+      }],
       change: saleData.change || 0,
       savings: savings > 0 ? savings : null,
       pointsEarned: pointsEarned,
-      i18n: t,
+      i18n: t, // Translation function for Handlebars
     };
     
     return template(data);
-  }, [saleData, t]);
+  }, [saleData, t, templateName]); // Added templateName to dependencies
 
   return (
     <div

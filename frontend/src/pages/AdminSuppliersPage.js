@@ -45,7 +45,6 @@ export default function AdminSuppliersPage() {
           try {
             const response = await api.get(`/supplier/${supplier.id}/details`);
             details[supplier.id] = response.data;
-            console.log(`Supplier ${supplier.id} details:`, response.data);
           } catch (error) {
             console.error(`Failed to fetch details for supplier ${supplier.id}:`, error);
             details[supplier.id] = {
@@ -59,7 +58,6 @@ export default function AdminSuppliersPage() {
         })
       );
       setSuppliersDetails(details);
-      console.log("All supplier details loaded:", details);
     } finally {
       setLoadingDetails(false);
     }
@@ -122,7 +120,6 @@ export default function AdminSuppliersPage() {
 
   useEffect(() => {
     const handleRefresh = () => {
-      console.log("Refreshing suppliers after GRN payment update");
       fetchSuppliers();
       if (suppliers.length > 0) {
         fetchAllSuppliersDetails();

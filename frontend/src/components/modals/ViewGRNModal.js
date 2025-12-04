@@ -32,7 +32,6 @@ export default function ViewGRNModal({ isOpen, onClose, grn: initialGRN, onPayme
     try {
       const response = await api.get(`/grn/${grn.id}`);
       setGrn(response.data);
-      console.log("GRN refreshed:", response.data);
     } catch (error) {
       console.error("Failed to refresh GRN:", error);
     }

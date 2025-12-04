@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
+const fs = require("fs");
 
 const localdb = require(path.join(__dirname, "localdb.js"));
+const thermalPrinter = require(path.join(__dirname, "thermalPrinterService.js"));
 
 let mainWindow;
 
@@ -9,13 +11,13 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    kiosk: true,            // Enables kiosk mode - full screen, no exit bar
-    frame: false,           // Removes OS window frame (title bar and controls)
-    resizable: false,       // Prevent window resize
-    fullscreen: true,       // Fullscreen mode
-    movable: false,         // Prevent moving window
-    skipTaskbar: false,      // Don't show in taskbar
-    alwaysOnTop: false,      // Window always on top
+    kiosk: true,
+    frame: false,
+    resizable: false,
+    fullscreen: true,
+    movable: false,
+    skipTaskbar: false,
+    alwaysOnTop: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -24,20 +26,36 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, "index.html"));
-  //win.loadURL("http://localhost:3000");
   mainWindow.setMenuBarVisibility(false);
-
-  mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
-    console.error("❌ LOAD FAILED");
-    console.error("Error Code:", errorCode);
-    console.error("Description:", errorDescription);
-    console.error("URL:", validatedURL);
-    console.error("__dirname:", __dirname);
-    console.error("index.html exists?", require("fs").existsSync(path.join(__dirname, "index.html")));
-  });
 }
 
-app.whenReady().then(createWindow);
+function loadReceiptTemplates() {
+  // Load all receipt templates from templates directory
+  const templatesDir = path.join(__dirname, "templates");
+  
+  try {
+    const files = fs.readdirSync(templatesDir);
+    
+    files.forEach(file => {
+      if (file.endsWith('.js')) {
+        const templatePath = path.join(templatesDir, file);
+        const template = require(templatePath);
+        
+        // Register template with its name
+        const templateName = file.replace('.js', '');
+        thermalPrinter.registerTemplate(templateName, template.receiptTemplate);
+      }
+    });
+  } catch (error) {
+    console.error("Error loading templates:", error);
+  }
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  thermalPrinter.initialize();
+  loadReceiptTemplates(); // Load all templates on startup
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
@@ -47,12 +65,58 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// Add logging to verify paths
-console.log("App Path:", app.getAppPath());
-console.log("__dirname:", __dirname);
-console.log("index.html Path:", path.join(__dirname, "index.html"));
+// --- THERMAL PRINTER HANDLERS ---
 
-// --- IPC HANDLERS FOR OFFLINE SALES SYNC ---
+ipcMain.handle("printReceipt", async (event, { saleData, translations, templateName }) => {
+  try {
+    // Create translation function
+    const t = (key) => {
+      const keys = key.split('.');
+      let value = translations;
+      for (const k of keys) {
+        value = value?.[k];
+      }
+      return value || key;
+    };
+
+    // Print using specified template (defaults to 'standard')
+    return await thermalPrinter.printReceipt(
+      saleData, 
+      t, 
+      templateName || 'ReceiptTemplate'
+    );
+  } catch (error) {
+    console.error("Print error:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("testPrinter", async () => {
+  try {
+    const isConnected = await thermalPrinter.isConnected();
+    return { success: isConnected };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Get list of available templates
+ipcMain.handle("getAvailableTemplates", async () => {
+  try {
+    const templatesDir = path.join(__dirname, "templates");
+    const files = fs.readdirSync(templatesDir);
+    
+    const templates = files
+      .filter(f => f.endsWith('.js'))
+      .map(f => f.replace('.js', ''));
+    
+    return { success: true, templates };
+  } catch (error) {
+    return { success: false, error: error.message, templates: [] };
+  }
+});
+
+// --- OFFLINE SALES SYNC HANDLERS ---
 ipcMain.on("saveSale", (event, salePayload) => {
   localdb.saveOfflineSale(salePayload);
 });
@@ -83,6 +147,3 @@ ipcMain.on("cacheProducts", (event, products) => {
 ipcMain.handle("getCachedProducts", async () => {
   return localdb.getCachedProducts();
 });
-
-console.log("App Path:", app.getAppPath());
-console.log("Index Path:", path.join(__dirname, "index.html"));
