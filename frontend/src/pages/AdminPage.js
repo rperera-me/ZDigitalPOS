@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import AdminProductsPage from "./AdminProductsPage";
 import AdminCategoriesPage from "./AdminCategoriesPage";
 import AdminCustomersPage from "./AdminCustomersPage";
-import BulkImportComponent from "../pages/BulkImportComponent";
 
 export default function AdminPage() {
   const [tab, setTab] = useState("products");
@@ -29,18 +28,11 @@ export default function AdminPage() {
         >
           Customers
         </button>
-        <button
-          className={`hover:text-blue-600 pb-1 ${tab === "bulkimport" ? "border-b-2 border-blue-600 font-semibold" : ""}`}
-          onClick={() => setTab("bulkimport")}
-        >
-          Bulk Import
-        </button>
       </nav>
 
       {tab === "products" && <AdminProductsPage />}
       {tab === "categories" && <AdminCategoriesPage />}
       {tab === "customers" && <AdminCustomersPage />}
-      {tab === "bulkimport" && <BulkImportComponent />}
     </div>
   );
 }

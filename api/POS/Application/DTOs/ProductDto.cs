@@ -9,17 +9,9 @@ namespace PosSystem.Application.DTOs
         public string Name { get; set; } = string.Empty;
         public int CategoryId { get; set; }
         public string CategoryName { get; set; } = string.Empty;
-        public decimal? MinCostPrice { get; set; }
-        public decimal? MaxCostPrice { get; set; }
-        public decimal? MinProductPrice { get; set; }
-        public decimal? MaxProductPrice { get; set; }
-        public decimal? MinSellingPrice { get; set; }
-        public decimal? MaxSellingPrice { get; set; }
-        public decimal? MinWholesalePrice { get; set; }
-        public decimal? MaxWholesalePrice { get; set; }
         public int StockQuantity { get; set; }
         public bool HasMultipleProductPrices { get; set; }
-        public List<ProductBatchDto>? PriceSources { get; set; }
+        public List<ProductBatchDto>? Batches { get; set; }
     }
 
     public class ProductPriceVariantDto

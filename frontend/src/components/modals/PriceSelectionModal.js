@@ -6,16 +6,6 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
 
     if (!isOpen || !product || !priceVariants || priceVariants.length === 0) return null;
 
-    // ✅ Determine which price to display based on customer type
-    const getPriceForCustomer = (variant) => {
-        switch (customerType) {
-            case "wholesale":
-                return variant.wholesalePrice;
-            default:
-                return variant.sellingPrice;
-        }
-    };
-
     const handleConfirm = () => {
         if (!selectedVariant) {
             alert("Please select a price");
@@ -27,8 +17,7 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
             return;
         }
 
-        const price = getPriceForCustomer(selectedVariant);
-        onSelectPrice(selectedVariant, price, quantity);
+        onSelectPrice(selectedVariant, quantity);
         setSelectedVariant(null);
         setQuantity(1);
     };

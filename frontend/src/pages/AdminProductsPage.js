@@ -106,13 +106,6 @@ export default function AdminProductsPage() {
       .catch(() => alert("Failed to load price breakdown"));
   };
 
-  // Helper to format price range
-  const formatPriceRange = (min, max) => {
-    if (!min && !max) return '-';
-    if (!max || min === max) return `Rs ${min?.toFixed(2) || '0.00'}`;
-    return `Rs ${min?.toFixed(2)} - ${max?.toFixed(2)}`;
-  };
-
   const handleEditProduct = (product) => {
     setEditingProduct(product);
     setShowUpdateModal(true);
@@ -383,56 +376,48 @@ export default function AdminProductsPage() {
               {products.map((p) => {
                 const showPriceRange = p.hasMultipleProductPrices;
                 const category = categories.find(c => c.id === p.categoryId);
+                const oldestBatch = p.batches && p.batches.length > 0 ? p.batches[0] : null;
 
                 return (
                   <tr key={p.id} className="border-t hover:bg-gray-50">
                     <td className="p-3 text-sm font-medium">{p.name}</td>
                     <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
                     <td className="p-3 text-sm">{category?.name || '-'}</td>
+
+                    {/* Cost Price Column */}
                     <td className="p-3 text-right">
-                      <div className="text-sm">
-                        {showPriceRange ? (
-                          <div className="space-y-0.5">
-                            <div className="text-orange-600 font-semibold">
-                              {formatPriceRange(p.minCostPrice, p.maxCostPrice)}
-                            </div>
-                          </div>
-                        ) : (
+                      {oldestBatch ? (
+                        <div className="text-sm">
                           <div className="text-orange-600 font-semibold">
-                            {p.minCostPrice ? `Rs ${p.minCostPrice.toFixed(2)}` : '-'}
+                            Rs {oldestBatch.costPrice.toFixed(2)}
                           </div>
-                        )}
-                      </div>
+                          {showPriceRange && p.batches.length > 1 && (
+                            <div className="text-xs text-gray-500">
+                              {p.batches.length} batches
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-sm">-</div>
+                      )}
                     </td>
+
+                    {/* Selling Price Column */}
                     <td className="p-3 text-right">
-                      {showPriceRange ? (
+                      {oldestBatch ? (
                         <div className="text-sm space-y-0.5">
                           <div className="text-xs text-gray-600">
-                            MRP: {formatPriceRange(p.minProductPrice, p.maxProductPrice)}
+                            MRP: Rs {oldestBatch.productPrice.toFixed(2)}
                           </div>
-                          <div className="text-xs text-green-600">
-                            Retail: {formatPriceRange(p.minSellingPrice, p.maxSellingPrice)}
+                          <div className="text-green-600 font-semibold">
+                            Rs {oldestBatch.sellingPrice.toFixed(2)}
                           </div>
-                          <div className="text-xs text-purple-600">
-                            W/S: {formatPriceRange(p.minWholesalePrice, p.maxWholesalePrice)}
+                          <div className="text-purple-600 text-xs">
+                            W/S: Rs {oldestBatch.wholesalePrice.toFixed(2)}
                           </div>
                         </div>
                       ) : (
-                        <div className="text-sm space-y-0.5">
-                          {p.minProductPrice && (
-                            <div className="text-xs text-gray-600">
-                              MRP: Rs {p.minProductPrice.toFixed(2)}
-                            </div>
-                          )}
-                          <div className="text-green-600 font-semibold">
-                            {p.minSellingPrice ? `Rs ${p.minSellingPrice.toFixed(2)}` : '-'}
-                          </div>
-                          {p.minWholesalePrice && (
-                            <div className="text-purple-600 text-xs">
-                              W/S: Rs {p.minWholesalePrice.toFixed(2)}
-                            </div>
-                          )}
-                        </div>
+                        <div className="text-gray-400 text-sm">-</div>
                       )}
                     </td>
 
@@ -532,7 +517,7 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
-      
+
       {/* Product Update Modal */}
       <ProductUpdateModal
         isOpen={showUpdateModal}

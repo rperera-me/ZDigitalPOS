@@ -1,4 +1,6 @@
 ﻿using MediatR;
+using POS.Application.DTOs;
+using POS.Domain.Entities;
 using POS.Domain.Repositories;
 using PosSystem.Application.DTOs;
 using PosSystem.Application.Queries.Products;
@@ -11,6 +13,7 @@ namespace POS.Application.Handlers.Query
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly ISupplierRepository _supplierRepository;
 
         public GetProductByIdQueryHandler(
             IProductRepository productRepository,
@@ -21,6 +24,7 @@ namespace POS.Application.Handlers.Query
             _productRepository = productRepository;
             _batchRepository = batchRepository;
             _categoryRepository = categoryRepository;
+            _supplierRepository = supplierRepository;
         }
 
         public async Task<ProductDto?> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
@@ -28,13 +32,13 @@ namespace POS.Application.Handlers.Query
             var product = await _productRepository.GetByIdAsync(request.Id);
             if (product == null) return null;
 
-            // Get category name
             var category = await _categoryRepository.GetByIdAsync(product.CategoryId);
 
-            // ✅ Get active batches to calculate price ranges
-            var batches = await _batchRepository.GetActiveBatchesByProductIdAsync(product.Id);
+            var batches = (await _batchRepository.GetActiveBatchesByProductIdAsync(product.Id))
+                .OrderBy(b => b.ReceivedDate)
+                .ToList();
 
-            var dto = new ProductDto
+            return new ProductDto
             {
                 Id = product.Id,
                 Barcode = product.Barcode,
@@ -42,23 +46,41 @@ namespace POS.Application.Handlers.Query
                 CategoryId = product.CategoryId,
                 CategoryName = category?.Name ?? "",
                 StockQuantity = product.StockQuantity,
-                HasMultipleProductPrices = product.HasMultipleProductPrices
+                HasMultipleProductPrices = product.HasMultipleProductPrices,
+                Batches = await MapBatchesToDto(batches) // Use same helper method
             };
+        }
 
-            // ✅ Calculate price ranges from active batches
-            if (batches.Any())
+        private async Task<List<ProductBatchDto>> MapBatchesToDto(List<ProductBatch> batches)
+        {
+            var batchDtos = new List<ProductBatchDto>();
+
+            foreach (var batch in batches)
             {
-                dto.MinCostPrice = batches.Min(b => b.CostPrice);
-                dto.MaxCostPrice = batches.Max(b => b.CostPrice);
-                dto.MinProductPrice = batches.Min(b => b.ProductPrice);
-                dto.MaxProductPrice = batches.Max(b => b.ProductPrice);
-                dto.MinSellingPrice = batches.Min(b => b.SellingPrice);
-                dto.MaxSellingPrice = batches.Max(b => b.SellingPrice);
-                dto.MinWholesalePrice = batches.Min(b => b.WholesalePrice);
-                dto.MaxWholesalePrice = batches.Max(b => b.WholesalePrice);
+                var supplier = batch.SupplierId.HasValue
+                    ? await _supplierRepository.GetByIdAsync(batch.SupplierId.Value)
+                    : null;
+
+                batchDtos.Add(new ProductBatchDto
+                {
+                    Id = batch.Id,
+                    ProductId = batch.ProductId,
+                    BatchNumber = batch.BatchNumber,
+                    SupplierId = batch.SupplierId,
+                    SupplierName = supplier?.Name ?? "Initial Stock",
+                    CostPrice = batch.CostPrice,
+                    ProductPrice = batch.ProductPrice,
+                    SellingPrice = batch.SellingPrice,
+                    WholesalePrice = batch.WholesalePrice,
+                    Quantity = batch.Quantity,
+                    RemainingQuantity = batch.RemainingQuantity,
+                    ManufactureDate = batch.ManufactureDate,
+                    ExpiryDate = batch.ExpiryDate,
+                    ReceivedDate = batch.ReceivedDate
+                });
             }
 
-            return dto;
+            return batchDtos;
         }
     }
 }

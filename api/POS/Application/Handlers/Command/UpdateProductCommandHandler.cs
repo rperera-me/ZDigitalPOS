@@ -1,5 +1,9 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using POS.Application.DTOs;
+using POS.Domain.Entities;
 using POS.Domain.Repositories;
+using POS.Infrastructure.Repositories;
 using PosSystem.Application.Commands.Products;
 using PosSystem.Application.DTOs;
 using PosSystem.Domain.Repositories;
@@ -11,6 +15,7 @@ namespace POS.Application.Handlers.Command
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly ISupplierRepository _supplierRepository;
 
         public UpdateProductCommandHandler(
             IProductRepository productRepository,
@@ -21,6 +26,7 @@ namespace POS.Application.Handlers.Command
             _productRepository = productRepository;
             _batchRepository = batchRepository;
             _categoryRepository = categoryRepository;
+            _supplierRepository = supplierRepository;
         }
 
         public async Task<ProductDto> Handle(UpdateProductCommand request, CancellationToken cancellationToken)
@@ -38,8 +44,9 @@ namespace POS.Application.Handlers.Command
             // Fetch names for DTO
             var category = await _categoryRepository.GetByIdAsync(updated.CategoryId);
 
-            // ✅ Get batches to calculate price ranges
-            var batches = await _batchRepository.GetActiveBatchesByProductIdAsync(updated.Id);
+            var batches = (await _batchRepository.GetActiveBatchesByProductIdAsync(updated.Id))
+                .OrderBy(b => b.ReceivedDate)
+                .ToList();
 
             var dto = new ProductDto
             {
@@ -49,23 +56,43 @@ namespace POS.Application.Handlers.Command
                 CategoryId = updated.CategoryId,
                 CategoryName = category?.Name ?? "",
                 StockQuantity = updated.StockQuantity,
-                HasMultipleProductPrices = updated.HasMultipleProductPrices
+                HasMultipleProductPrices = updated.HasMultipleProductPrices,
+                Batches = await MapBatchesToDto(batches)
             };
 
-            // ✅ Calculate price ranges
-            if (batches.Any())
+            return dto;
+        }
+
+        private async Task<List<ProductBatchDto>> MapBatchesToDto(List<ProductBatch> batches)
+        {
+            var batchDtos = new List<ProductBatchDto>();
+
+            foreach (var batch in batches)
             {
-                dto.MinCostPrice = batches.Min(b => b.CostPrice);
-                dto.MaxCostPrice = batches.Max(b => b.CostPrice);
-                dto.MinProductPrice = batches.Min(b => b.ProductPrice);
-                dto.MaxProductPrice = batches.Max(b => b.ProductPrice);
-                dto.MinSellingPrice = batches.Min(b => b.SellingPrice);
-                dto.MaxSellingPrice = batches.Max(b => b.SellingPrice);
-                dto.MinWholesalePrice = batches.Min(b => b.WholesalePrice);
-                dto.MaxWholesalePrice = batches.Max(b => b.WholesalePrice);
+                var supplier = batch.SupplierId.HasValue
+                    ? await _supplierRepository.GetByIdAsync(batch.SupplierId.Value)
+                    : null;
+
+                batchDtos.Add(new ProductBatchDto
+                {
+                    Id = batch.Id,
+                    ProductId = batch.ProductId,
+                    BatchNumber = batch.BatchNumber,
+                    SupplierId = batch.SupplierId,
+                    SupplierName = supplier?.Name ?? "Initial Stock",
+                    CostPrice = batch.CostPrice,
+                    ProductPrice = batch.ProductPrice,
+                    SellingPrice = batch.SellingPrice,
+                    WholesalePrice = batch.WholesalePrice,
+                    Quantity = batch.Quantity,
+                    RemainingQuantity = batch.RemainingQuantity,
+                    ManufactureDate = batch.ManufactureDate,
+                    ExpiryDate = batch.ExpiryDate,
+                    ReceivedDate = batch.ReceivedDate
+                });
             }
 
-            return dto;
+            return batchDtos;
         }
     }
 }

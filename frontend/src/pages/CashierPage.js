@@ -89,15 +89,16 @@ export default function CashierPage() {
     navigate("/login");
   };
 
-  // Filtered products with search
-  const filteredProducts = useMemo(() => {
+  const displayProducts = useMemo(() => {
     let filtered = products.filter(p => p.stockQuantity > 0);
+
     if (searchTerm.length >= 3) {
-      return filtered
-        .filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      filtered = filtered.filter((p) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-    return products;
+
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [products, searchTerm]);
 
   const getProductCount = () => {
@@ -122,36 +123,47 @@ export default function CashierPage() {
     api.get(`/product/barcode/${code}`)
       .then((res) => {
         if (res.data) {
+          const product = res.data;
+
+          // Check if product has batches
+          if (!product.batches || product.batches.length === 0) {
+            alert("Product has no stock available.");
+            setBarcodeInput("");
+            refocusBarcodeInput();
+            return;
+          }
 
           // If quantity mode is ON or product has multiple prices, show price modal
-          if (quantityMode || res.data.hasMultipleProductPrices) {
-            onAddProduct(res.data);
+          if (quantityMode || product.hasMultipleProductPrices) {
+            onAddProduct(product);
           } else {
-            // Direct add with quantity 1
+            // Direct add with quantity 1 using oldest batch
+            const oldestBatch = product.batches[0];
             const price = customerType === "wholesale"
-              ? (res.data.minWholesalePrice || res.data.minSellingPrice || 0)
-              : (res.data.minSellingPrice || 0);
+              ? oldestBatch.wholesalePrice
+              : oldestBatch.sellingPrice;
+            const productPrice = oldestBatch.productPrice;
 
-            addToCart(res.data, price, 1, null);
+            addToCart(product, price, productPrice, 1, oldestBatch.id);
           }
 
           // Clear input and refocus
           if (!barcode) {
             setBarcodeInput("");
             setTimeout(() => {
-              document.getElementById('barcode-scanner-input')?.focus();
+              refocusBarcodeInput();
             }, 100);
           }
         } else {
           alert("Product not found.");
           setBarcodeInput("");
-          document.getElementById('barcode-scanner-input')?.focus();
+          refocusBarcodeInput();
         }
       })
       .catch(() => {
         alert("Product not found.");
         setBarcodeInput("");
-        document.getElementById('barcode-scanner-input')?.focus();
+        refocusBarcodeInput();
       });
   }, [barcodeInput, quantityMode, customerType]);
 
@@ -163,6 +175,7 @@ export default function CashierPage() {
 
       // Auto-select the newly added customer
       dispatch(setCustomer(newCustomer));
+      refocusBarcodeInput();
     });
   }, [dispatch]);
 
@@ -201,8 +214,10 @@ export default function CashierPage() {
     window.electronAPI.send("saveSale", salePayload);
   }
 
-  function addToCart(product, price, quantity, sourceId = null) {
-    console.log("product", product);
+  function addToCart(product, price, productPrice, quantity, sourceId = null) {
+    // Get oldest batch for regular price
+    let regularPrice = productPrice;
+
     dispatch(
       addSaleItem({
         productId: typeof product === 'object' ? product.id : product,
@@ -210,18 +225,20 @@ export default function CashierPage() {
         price: price,
         quantity: quantity,
         sourceId: sourceId,
-        regularPrice: typeof product === 'object' ? (product.regularPrice || product.maxSellingPrice || price) : price // ADD THIS
+        regularPrice: regularPrice
       })
     );
+    refocusBarcodeInput();
   }
 
-  function handlePriceSelect(variant, price, quantity) {
-
+  function handlePriceSelect(variant, quantity) {
     // Get source ID (no batch logic)
     const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
     const sourceId = firstSource?.sourceId || null;
+    const productPrice = variant.productPrice;
+    const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
 
-    addToCart(selectedProduct, price, quantity, sourceId);
+    addToCart(selectedProduct, price, productPrice, quantity, sourceId);
 
     setShowPriceModal(false);
     setSelectedProduct(null);
@@ -230,43 +247,69 @@ export default function CashierPage() {
   }
 
   function onAddProduct(product) {
-    // Check if product has multiple PRICES (not batches)
+    if (!product.batches || product.batches.length === 0) {
+      alert("This product has no stock available");
+      refocusBarcodeInput();
+      return;
+    }
     if (product.hasMultipleProductPrices) {
-
       api.get(`/product/${product.id}/price-variants`)
         .then((res) => {
           if (res.data && res.data.length > 1) {
             setPriceVariants(res.data);
             setSelectedProduct(product);
             setShowPriceModal(true);
+            refocusBarcodeInput();
           } else if (res.data && res.data.length === 1) {
+            // Only one price variant
             const variant = res.data[0];
-            const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
+            const price = customerType === "wholesale"
+              ? variant.wholesalePrice
+              : variant.sellingPrice;
+            const productPrice = variant.productPrice;
 
-            const firstSource = variant.sources && variant.sources.length > 0 ? variant.sources[0] : null;
+            const firstSource = variant.sources && variant.sources.length > 0
+              ? variant.sources[0]
+              : null;
             const sourceId = firstSource?.sourceId || null;
 
-            addToCart(product, price, 1, sourceId);
+            addToCart(product, price, productPrice, 1, sourceId);
+            refocusBarcodeInput();
           } else {
+            // Fallback to oldest batch
+            const oldestBatch = product.batches[0];
             const price = customerType === "wholesale"
-              ? (product.minWholesalePrice || product.minSellingPrice || 0)
-              : (product.minSellingPrice || 0);
-            addToCart(product, price, 1, null);
+              ? oldestBatch.wholesalePrice
+              : oldestBatch.sellingPrice;
+            const productPrice = oldestBatch.productPrice;
+            addToCart(product, price, productPrice, 1, oldestBatch.id);
+            refocusBarcodeInput();
           }
         })
         .catch((err) => {
           console.error("❌ Error fetching variants:", err);
-          // Fallback to min prices
+          // Fallback to oldest batch
+          const oldestBatch = product.batches[0];
           const price = customerType === "wholesale"
-            ? (product.minWholesalePrice || product.minSellingPrice || 0)
-            : (product.minSellingPrice || 0);
-          addToCart(product, price, 1, null);
+            ? oldestBatch.wholesalePrice
+            : oldestBatch.sellingPrice;
+          const productPrice = oldestBatch.productPrice;
+          addToCart(product, price, productPrice, 1, oldestBatch.id);
+          refocusBarcodeInput();
         });
     } else {
-      const price = customerType === "wholesale"
-        ? (product.minWholesalePrice || product.minSellingPrice || 0)
-        : (product.minSellingPrice || 0);
-      addToCart(product, price, 1, null);
+      const oldestBatch = product.batches && product.batches.length > 0
+        ? product.batches[0]
+        : null;
+      const price = oldestBatch
+        ? (customerType === "wholesale"
+          ? oldestBatch.wholesalePrice
+          : oldestBatch.sellingPrice)
+        : 0;
+      const productPrice = oldestBatch.productPrice;
+      const sourceId = oldestBatch?.id || null;
+      addToCart(product, price, productPrice, 1, sourceId);
+      refocusBarcodeInput();
     }
   }
 
@@ -278,6 +321,7 @@ export default function CashierPage() {
   function onUpdateQuantity(productId, sourceId, price, quantity) {
     if (quantity < 1) return;
     dispatch(updateQuantity({ productId, sourceId, price, quantity }));
+    refocusBarcodeInput();
   }
 
   function holdSale() {
@@ -301,12 +345,14 @@ export default function CashierPage() {
         dispatch(clearSale());
         fetchHoldSales();
         alert("Sale held.");
+        refocusBarcodeInput();
       });
     } else {
       saveSaleOffline(salePayload);
       dispatch(clearSale());
       fetchHoldSales();
       alert("Sale saved offline.");
+      refocusBarcodeInput();
     }
   }
 
@@ -326,14 +372,19 @@ export default function CashierPage() {
     api.delete(`/sale/held/${sale.id}`).then(() => {
       fetchHoldSales();
     });
+    refocusBarcodeInput();
   }
 
   function newSale() {
     dispatch(clearSale());
+    refocusBarcodeInput();
   }
 
   function openPayment() {
-    if (saleItems.length === 0) return alert("No items in sale.");
+    if (saleItems.length === 0){
+      alert("No items in sale.");
+      refocusBarcodeInput();
+    }
     setIsPaymentOpen(true);
   }
 
@@ -396,6 +447,7 @@ export default function CashierPage() {
       }).catch((err) => {
         console.error("Sale failed:", err);
         alert("Failed to process sale: " + (err.response?.data?.message || err.message));
+        refocusBarcodeInput();
       });
     } else {
       // Offline mode - same complete data
@@ -418,6 +470,7 @@ export default function CashierPage() {
       dispatch(setCustomer(null));
       fetchHoldSales();
       alert("Sale saved offline, will sync when online.");
+      refocusBarcodeInput();
     }
   }
 
@@ -437,16 +490,20 @@ export default function CashierPage() {
             invoiceNo: res.data.invoiceNo || res.data.id || "", // ADD
           });
           setIsReceiptOpen(true);
+          refocusBarcodeInput();
         } else {
           alert("No previous sale found to reprint.");
+          refocusBarcodeInput();
         }
       }).catch(() => {
         alert("Error fetching last sale.");
+        refocusBarcodeInput();
       });
     } else {
       // Reprint current or last receipt
       i18n.changeLanguage(storeSetting.receiptLanguage || "en");
       setIsReceiptOpen(true);
+      refocusBarcodeInput();
     }
   }
 
@@ -457,6 +514,7 @@ export default function CashierPage() {
       dispatch(setCustomer(null));
       setSelectedCustomerId(null);
     }
+    refocusBarcodeInput();
   }
 
   function handleViewLastSale() {
@@ -473,11 +531,14 @@ export default function CashierPage() {
         };
         setLastSale(formattedSale);
         setIsLastSaleModalOpen(true);
+        refocusBarcodeInput();
       } else {
         alert("No previous sale found.");
+        refocusBarcodeInput();
       }
     }).catch(() => {
       alert("Error fetching last sale.");
+      refocusBarcodeInput();
     });
   }
 
@@ -669,24 +730,15 @@ export default function CashierPage() {
           {/* Products Grid */}
           <div className="flex-1 overflow-y-auto p-2">
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-              {filteredProducts.map((p) => {
+              {displayProducts.map((p) => {
                 const hasMultiplePrices = p.hasMultipleProductPrices;
+                const oldestBatch = p.batches && p.batches.length > 0 ? p.batches[0] : null;
 
-                // Calculate price display
-                let priceDisplay;
-                if (hasMultiplePrices) {
-                  const minPrice = customerType === "wholesale"
-                    ? p.minWholesalePrice
-                    : p.minSellingPrice;
-                  const maxPrice = customerType === "wholesale"
-                    ? p.maxWholesalePrice
-                    : p.maxSellingPrice;
-                  priceDisplay = `${minPrice?.toFixed(2)} - ${maxPrice?.toFixed(2)}`;
-                } else {
-                  const price = customerType === "wholesale"
-                    ? (p.minWholesalePrice || p.minSellingPrice)
-                    : p.minSellingPrice;
-                  priceDisplay = price?.toFixed(2) || '0.00';
+                // Calculate price display from oldest batch
+                let priceDisplay = '0.00';
+                if (oldestBatch) {
+                  const price = oldestBatch.productPrice;
+                  priceDisplay = price.toFixed(2);
                 }
 
                 return (
@@ -704,7 +756,7 @@ export default function CashierPage() {
 
                     {/* Price Section */}
                     <div className="border-t border-gray-200 pt-2 mt-auto">
-                      {hasMultiplePrices ? (
+                      {hasMultiplePrices && p.batches && p.batches.length > 1 ? (
                         <div className="space-y-1">
                           <div className="text-sm font-bold text-blue-600 text-center">
                             Rs {priceDisplay}
@@ -715,6 +767,11 @@ export default function CashierPage() {
                           <div className="text-lg font-bold text-blue-600">
                             Rs {priceDisplay}
                           </div>
+                          {!oldestBatch && (
+                            <div className="text-xs text-red-500 mt-1">
+                              No stock
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
