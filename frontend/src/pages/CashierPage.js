@@ -22,7 +22,8 @@ import {
   HeldSalesModal,
   PriceSelectionModal,
   ReceiptModal,
-  AddCustomerModal
+  AddCustomerModal,
+  BillReprintModal
 } from "../components/modals";
 import TodaySalesPage from "./TodaySalesPage";
 
@@ -78,6 +79,8 @@ export default function CashierPage() {
   const [quantityMode, setQuantityMode] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+
+  const [showBillReprintModal, setShowBillReprintModal] = useState(false);
 
   const [selectedReceiptTemplate, setSelectedReceiptTemplate] = useState(
     storeSetting.defaultReceiptTemplate || 'ReceiptTemplate'
@@ -212,6 +215,10 @@ export default function CashierPage() {
   function saveSaleOffline(salePayload) {
     // Electron's exposed API to send data to main process
     window.electronAPI.send("saveSale", salePayload);
+  }
+
+  function handleReprintBill() {
+    setShowBillReprintModal(true);
   }
 
   function addToCart(product, price, productPrice, quantity, sourceId = null) {
@@ -470,39 +477,6 @@ export default function CashierPage() {
       dispatch(setCustomer(null));
       fetchHoldSales();
       alert("Sale saved offline, will sync when online.");
-      refocusBarcodeInput();
-    }
-  }
-
-  // Menu action handlers
-  function handleReprintBill() {
-    if (!receiptData && !lastSale) {
-      // Fetch the last sale if no receipt data
-      api.get("/sale/last").then((res) => {
-        if (res.data) {
-          i18n.changeLanguage(storeSetting.receiptLanguage || "en");
-          setReceiptData({
-            ...res.data,
-            storeName: storeSetting.storeName, // ADD
-            storeAddress: storeSetting.storeAddress, // ADD
-            storeContact: storeSetting.storeContact, // ADD
-            cashier: res.data.cashier?.username || res.data.cashier || "", // UPDATED
-            invoiceNo: res.data.invoiceNo || res.data.id || "", // ADD
-          });
-          setIsReceiptOpen(true);
-          refocusBarcodeInput();
-        } else {
-          alert("No previous sale found to reprint.");
-          refocusBarcodeInput();
-        }
-      }).catch(() => {
-        alert("Error fetching last sale.");
-        refocusBarcodeInput();
-      });
-    } else {
-      // Reprint current or last receipt
-      i18n.changeLanguage(storeSetting.receiptLanguage || "en");
-      setIsReceiptOpen(true);
       refocusBarcodeInput();
     }
   }
@@ -1194,6 +1168,28 @@ export default function CashierPage() {
       <TodaySalesPage
         isOpen={showTodaySales}
         onClose={() => setShowTodaySales(false)}
+      />
+
+      <BillReprintModal
+        isOpen={showBillReprintModal}
+        onClose={() => {
+          setShowBillReprintModal(false);
+          refocusBarcodeInput();
+        }}
+        onReprintSale={(sale) => {
+          // Format the sale data properly for receipt
+          i18n.changeLanguage(storeSetting.receiptLanguage || "en");
+          setReceiptData({
+            ...sale,
+            storeName: storeSetting.storeName,
+            storeAddress: storeSetting.storeAddress,
+            storeContact: storeSetting.storeContact,
+            cashier: sale.cashier?.username || sale.cashier || "",
+            invoiceNo: sale.invoiceNo || sale.id || "",
+          });
+          setShowBillReprintModal(false);
+          setIsReceiptOpen(true);
+        }}
       />
     </div >
   );

@@ -8,3 +8,4 @@ export { default as ProductUpdateModal } from './ProductUpdateModal';
 export { default as ViewGRNModal } from './ViewGRNModal';
 export { default as SupplierGRNsModal } from './SupplierGRNsModal';
 export { default as ViewCustomerPurchasesModal } from './ViewCustomerPurchasesModal';
+export { default as BillReprintModal } from './BillReprintModal';
