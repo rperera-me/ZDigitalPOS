@@ -381,7 +381,7 @@ export default function CashierPage() {
   }
 
   function openPayment() {
-    if (saleItems.length === 0){
+    if (saleItems.length === 0) {
       alert("No items in sale.");
       refocusBarcodeInput();
     }
@@ -1024,6 +1024,7 @@ export default function CashierPage() {
                   <tr className="border-b">
                     <th className="text-left p-1">Product</th>
                     <th className="text-center p-1">Qty</th>
+                    <th className="text-right p-1">MRP</th>
                     <th className="text-right p-1">Price</th>
                     <th className="text-right p-1">Total</th>
                     <th></th>
@@ -1051,6 +1052,9 @@ export default function CashierPage() {
                             +
                           </button>
                         </div>
+                      </td>
+                      <td className="text-right p-1 text-xs text-gray-500">
+                        Rs {(item.regularPrice || item.price).toFixed(2)}
                       </td>
                       <td className="text-right p-1 text-xs">Rs {item.price.toFixed(2)}</td>
                       <td className="text-right p-1 font-semibold text-xs">Rs {(item.price * item.quantity).toFixed(2)}</td>
