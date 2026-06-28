@@ -70,6 +70,15 @@ const posSlice = createSlice({
         item.quantity = quantity;
       }
     },
+    repriceCart: (state, action) => {
+      const { customerType } = action.payload;
+      state.saleItems = state.saleItems.map(item => ({
+        ...item,
+        price: customerType === "wholesale"
+          ? (item.wholesalePrice ?? item.price)
+          : (item.sellingPrice ?? item.price),
+      }));
+    },
     clearSale: (state) => {
       state.saleItems = [];
       state.currentCustomer = null;
@@ -108,6 +117,7 @@ export const {
   addSaleItem,
   removeSaleItem,
   updateQuantity,
+  repriceCart,
   clearSale,
   setHoldSales,
   setCustomers,

@@ -33,8 +33,19 @@ export default function BillReprintModal({ isOpen, onClose, onReprintSale }) {
       const api = require("../../api/axios").default;
       
       if (searchType === "invoice") {
-        // Search by invoice number (sale ID)
-        const response = await api.get(`/sale/${invoiceNumber}`);
+        // Accept full format "INV-2026-06-000055" or plain numeric "55"
+        const trimmed = invoiceNumber.trim();
+        const parts = trimmed.split("-");
+        const numericId = parts[parts.length - 1].replace(/^0+/, "") || parts[parts.length - 1];
+        const saleId = parseInt(numericId, 10);
+
+        if (isNaN(saleId) || saleId <= 0) {
+          setError("Invalid invoice number");
+          setLoading(false);
+          return;
+        }
+
+        const response = await api.get(`/sale/${saleId}`);
         if (response.data) {
           setSales([response.data]);
           setSelectedSale(response.data);
@@ -43,16 +54,17 @@ export default function BillReprintModal({ isOpen, onClose, onReprintSale }) {
           setSales([]);
         }
       } else {
-        // Search by date
-        const startDate = new Date(searchDate);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(searchDate);
-        endDate.setHours(23, 59, 59, 999);
-        
+        // Search by date — append T00:00:00 to force local-time parsing (avoids UTC-midnight offset bug)
+        const startDate = new Date(searchDate + "T00:00:00");
+        const endDate = new Date(searchDate + "T23:59:59");
+
+        const pad = n => String(n).padStart(2, '0');
+        const toLocalISO = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
         const response = await api.get("/sale/daterange", {
           params: {
-            start: startDate.toISOString(),
-            end: endDate.toISOString()
+            start: toLocalISO(startDate),
+            end: toLocalISO(endDate)
           }
         });
         
@@ -176,7 +188,7 @@ export default function BillReprintModal({ isOpen, onClose, onReprintSale }) {
                 onChange={(e) => setInvoiceNumber(e.target.value)}
                 onKeyPress={handleKeyPress}
                 className="flex-1 border-2 border-gray-300 rounded-lg p-3 text-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-                placeholder="Enter invoice number (e.g., 12345)"
+                placeholder="Enter invoice number (e.g., INV-2026-06-000055 or 55)"
                 autoFocus
               />
             ) : (
@@ -239,7 +251,7 @@ export default function BillReprintModal({ isOpen, onClose, onReprintSale }) {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="text-sm opacity-80">Invoice Number</div>
-                    <div className="text-2xl font-bold">#{selectedSale.id}</div>
+                    <div className="text-2xl font-bold">{selectedSale.invoiceNo || `#${selectedSale.id}`}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm opacity-80">Date & Time</div>
@@ -335,7 +347,7 @@ export default function BillReprintModal({ isOpen, onClose, onReprintSale }) {
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="font-bold text-lg text-gray-800">Invoice #{sale.id}</div>
+                      <div className="font-bold text-lg text-gray-800">{sale.invoiceNo || `#${sale.id}`}</div>
                       <div className="text-sm text-gray-600">
                         {new Date(sale.saleDate).toLocaleTimeString()}
                       </div>

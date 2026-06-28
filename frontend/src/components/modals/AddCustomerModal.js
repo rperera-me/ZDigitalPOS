@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function AddCustomerModal({ 
   isOpen, 
@@ -16,6 +16,11 @@ export default function AddCustomerModal({
   
   // ✅ NEW STATE for type selection (only used in admin)
   const [selectedType, setSelectedType] = useState(customerType);
+
+  // Sync selectedType whenever the prop changes (e.g. loyalty → wholesale in cashier)
+  useEffect(() => {
+    setSelectedType(customerType);
+  }, [customerType]);
 
   const resetForm = () => {
     setName("");

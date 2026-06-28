@@ -69,9 +69,11 @@ export const receiptTemplate = `
       <span>{{i18n "receipt.balance"}}:</span>
       <span class="amount">{{formatCurrency change}}</span>
     </div>
+    {{#if savings}}
     <div class="savings-section">
       <p><strong>{{i18n "receipt.youSaved"}}: {{formatCurrency savings}}</strong></p>
     </div>
+    {{/if}}
   </div>
 
   {{#if customer}}

@@ -7,6 +7,7 @@ import {
   addSaleItem,
   removeSaleItem,
   updateQuantity,
+  repriceCart,
   clearSale,
   setHoldSales,
   setCustomers,
@@ -147,7 +148,7 @@ export default function CashierPage() {
               : oldestBatch.sellingPrice;
             const productPrice = oldestBatch.productPrice;
 
-            addToCart(product, price, productPrice, 1, oldestBatch.id);
+            addToCart(product, price, productPrice, 1, oldestBatch.id, oldestBatch.sellingPrice, oldestBatch.wholesalePrice);
           }
 
           // Clear input and refocus
@@ -221,10 +222,7 @@ export default function CashierPage() {
     setShowBillReprintModal(true);
   }
 
-  function addToCart(product, price, productPrice, quantity, sourceId = null) {
-    // Get oldest batch for regular price
-    let regularPrice = productPrice;
-
+  function addToCart(product, price, productPrice, quantity, sourceId = null, sellingPrice = null, wholesalePrice = null) {
     dispatch(
       addSaleItem({
         productId: typeof product === 'object' ? product.id : product,
@@ -232,7 +230,9 @@ export default function CashierPage() {
         price: price,
         quantity: quantity,
         sourceId: sourceId,
-        regularPrice: regularPrice
+        regularPrice: productPrice,
+        sellingPrice: sellingPrice !== null ? sellingPrice : price,
+        wholesalePrice: wholesalePrice !== null ? wholesalePrice : price,
       })
     );
     refocusBarcodeInput();
@@ -245,7 +245,7 @@ export default function CashierPage() {
     const productPrice = variant.productPrice;
     const price = customerType === "wholesale" ? variant.wholesalePrice : variant.sellingPrice;
 
-    addToCart(selectedProduct, price, productPrice, quantity, sourceId);
+    addToCart(selectedProduct, price, productPrice, quantity, sourceId, variant.sellingPrice, variant.wholesalePrice);
 
     setShowPriceModal(false);
     setSelectedProduct(null);
@@ -280,7 +280,7 @@ export default function CashierPage() {
               : null;
             const sourceId = firstSource?.sourceId || null;
 
-            addToCart(product, price, productPrice, 1, sourceId);
+            addToCart(product, price, productPrice, 1, sourceId, variant.sellingPrice, variant.wholesalePrice);
             refocusBarcodeInput();
           } else {
             // Fallback to oldest batch
@@ -289,7 +289,7 @@ export default function CashierPage() {
               ? oldestBatch.wholesalePrice
               : oldestBatch.sellingPrice;
             const productPrice = oldestBatch.productPrice;
-            addToCart(product, price, productPrice, 1, oldestBatch.id);
+            addToCart(product, price, productPrice, 1, oldestBatch.id, oldestBatch.sellingPrice, oldestBatch.wholesalePrice);
             refocusBarcodeInput();
           }
         })
@@ -301,7 +301,7 @@ export default function CashierPage() {
             ? oldestBatch.wholesalePrice
             : oldestBatch.sellingPrice;
           const productPrice = oldestBatch.productPrice;
-          addToCart(product, price, productPrice, 1, oldestBatch.id);
+          addToCart(product, price, productPrice, 1, oldestBatch.id, oldestBatch.sellingPrice, oldestBatch.wholesalePrice);
           refocusBarcodeInput();
         });
     } else {
@@ -315,7 +315,7 @@ export default function CashierPage() {
         : 0;
       const productPrice = oldestBatch.productPrice;
       const sourceId = oldestBatch?.id || null;
-      addToCart(product, price, productPrice, 1, sourceId);
+      addToCart(product, price, productPrice, 1, sourceId, oldestBatch?.sellingPrice ?? price, oldestBatch?.wholesalePrice ?? price);
       refocusBarcodeInput();
     }
   }
@@ -399,13 +399,11 @@ export default function CashierPage() {
     const salePayload = {
       cashierId: user?.id || 1,
       customerId: paymentData.customer?.id || null,
-      saleItems: saleItems.map(({ productId, name, price, quantity, sourceId, regularPrice }) => ({
+      saleItems: saleItems.map(({ productId, price, quantity, sourceId }) => ({
         productId,
-        name,
+        batchId: sourceId || null,   // map sourceId → batchId so backend can deduct correct batch
         price,
         quantity,
-        sourceId,
-        regularPrice: regularPrice || price
       })),
       totalAmount: paymentData.totalAmount,
       discountType: paymentData.discountType,
@@ -417,34 +415,39 @@ export default function CashierPage() {
       payments: paymentData.payments,
       amountPaid: paymentData.finalAmount,
       change: paymentData.balance,
-      date: new Date(),
     };
 
     if (isOnline()) {
       api.post("/sale", salePayload).then((response) => {
-        // Update customer credit if credit payment was made
-        if (paymentData.customer && paymentData.payments.some(p => p.type === "Credit")) {
-          const creditPayment = paymentData.payments.find(p => p.type === "Credit");
-          const newCreditBalance = (paymentData.customer.creditBalance || 0) + creditPayment.amount;
+        const saved = response.data;
 
-          api.put(`/customer/${paymentData.customer.id}`, {
-            ...paymentData.customer,
-            creditBalance: newCreditBalance
-          });
-        }
-
-        // Show receipt with COMPLETE data
+        // Build receipt from confirmed backend data — source of truth
         i18n.changeLanguage(storeSetting.receiptLanguage || "si");
         setReceiptData({
-          ...salePayload,
-          id: response.data.id || `INV-${Date.now()}`,
-          invoiceNo: response.data.invoiceNo || `INV-${Date.now()}`,
+          id: saved.id,
+          invoiceNo: saved.invoiceNo,
+          saleDate: saved.saleDate,
+          cashier: saved.cashierName,
+          customer: saved.customer || null,
           storeName: storeSetting.storeName,
           storeAddress: storeSetting.storeAddress,
           storeContact: storeSetting.storeContact,
-          cashier: user?.username || "",
-          customer: paymentData.customer,
-          date: new Date(),
+          saleItems: saved.saleItems.map(si => ({
+            productId: si.productId,
+            name: si.productName,
+            price: si.price,
+            quantity: si.quantity,
+            regularPrice: si.regularPrice ?? si.price,  // MRP; equals price when no savings
+          })),
+          totalAmount: saved.totalAmount,
+          discountType: saved.discountType,
+          discountValue: saved.discountValue,
+          discountAmount: saved.discountAmount,
+          finalAmount: saved.finalAmount,
+          paymentType: saved.paymentType,
+          payments: saved.payments,
+          amountPaid: saved.amountPaid,
+          change: saved.change,
         });
         setIsReceiptOpen(true);
         setIsPaymentOpen(false);
@@ -457,19 +460,35 @@ export default function CashierPage() {
         refocusBarcodeInput();
       });
     } else {
-      // Offline mode - same complete data
+      // Offline mode — use local cart data since there is no backend response
+      const offlineInvoiceNo = `INV-OFFLINE-${Date.now()}`;
       saveSaleOffline(salePayload);
       i18n.changeLanguage(storeSetting.receiptLanguage || "si");
       setReceiptData({
-        ...salePayload,
-        id: `INV-OFFLINE-${Date.now()}`,
-        invoiceNo: `INV-OFFLINE-${Date.now()}`,
+        id: offlineInvoiceNo,
+        invoiceNo: offlineInvoiceNo,
+        saleDate: new Date(),
+        cashier: user?.username || "Cashier",
+        customer: paymentData.customer || null,
         storeName: storeSetting.storeName,
         storeAddress: storeSetting.storeAddress,
         storeContact: storeSetting.storeContact,
-        cashier: user?.username || "Cashier",
-        customer: paymentData.customer,
-        date: new Date(),
+        saleItems: saleItems.map(({ productId, name, price, quantity, regularPrice }) => ({
+          productId,
+          name,
+          price,
+          quantity,
+          regularPrice: regularPrice ?? price,
+        })),
+        totalAmount: paymentData.totalAmount,
+        discountType: paymentData.discountType,
+        discountValue: paymentData.discountValue,
+        discountAmount: paymentData.discountAmount,
+        finalAmount: paymentData.finalAmount,
+        paymentType: salePayload.paymentType,
+        payments: paymentData.payments,
+        amountPaid: paymentData.finalAmount,
+        change: paymentData.balance,
       });
       setIsReceiptOpen(true);
       setIsPaymentOpen(false);
@@ -481,12 +500,20 @@ export default function CashierPage() {
     }
   }
 
-  // Add this function to handle customer type change
   function handleCustomerTypeChange(type) {
     setCustomerType(type);
-    if (type === "walk-in") {
-      dispatch(setCustomer(null));
-      setSelectedCustomerId(null);
+    // Always clear the selected customer when type changes so stale data from
+    // the previous type is never shown in the info panel
+    dispatch(setCustomer(null));
+    setSelectedCustomerId(null);
+    // Refresh customer list to get current credit balance and loyalty points
+    api.get("/customer").then((res) => {
+      const filtered = res.data.filter(c => c.type !== "walk-in");
+      dispatch(setCustomers(filtered));
+    });
+    // Re-price all cart items to match the new customer type
+    if (saleItems.length > 0) {
+      dispatch(repriceCart({ customerType: type }));
     }
     refocusBarcodeInput();
   }
@@ -494,14 +521,18 @@ export default function CashierPage() {
   function handleViewLastSale() {
     api.get("/sale/last").then((res) => {
       if (res.data) {
-        // Format the sale data properly for display
         const formattedSale = {
           ...res.data,
-          storeName: storeSetting.storeName, // ADD
-          storeAddress: storeSetting.storeAddress, // ADD
-          storeContact: storeSetting.storeContact, // ADD
-          cashier: res.data.cashier?.username || res.data.cashier || "", // UPDATED
-          invoiceNo: res.data.invoiceNo || res.data.id || "", // ADD
+          storeName: storeSetting.storeName,
+          storeAddress: storeSetting.storeAddress,
+          storeContact: storeSetting.storeContact,
+          cashier: res.data.cashierName || "",
+          invoiceNo: res.data.invoiceNo || "",
+          saleItems: (res.data.saleItems || []).map(si => ({
+            ...si,
+            name: si.productName || si.name || "",
+            regularPrice: si.regularPrice ?? si.price,
+          })),
         };
         setLastSale(formattedSale);
         setIsLastSaleModalOpen(true);
@@ -919,8 +950,19 @@ export default function CashierPage() {
                   <select
                     value={currentCustomer?.id || ""}
                     onChange={(e) => {
-                      const customer = customers.find((c) => c.id === parseInt(e.target.value));
-                      dispatch(setCustomer(customer || null));
+                      if (!e.target.value) {
+                        dispatch(setCustomer(null));
+                        return;
+                      }
+                      const customerId = parseInt(e.target.value);
+                      // Fetch fresh customer data so credit balance and points are current
+                      api.get(`/customer/${customerId}`)
+                        .then((res) => dispatch(setCustomer(res.data)))
+                        .catch(() => {
+                          // Fallback to cached data if endpoint unavailable
+                          const cached = customers.find((c) => c.id === customerId);
+                          dispatch(setCustomer(cached || null));
+                        });
                     }}
                     className="flex-1 border rounded p-1 text-xs focus:outline-none focus:border-blue-500"
                   >
@@ -999,7 +1041,7 @@ export default function CashierPage() {
                     <th className="text-left p-1">Product</th>
                     <th className="text-center p-1">Qty</th>
                     <th className="text-right p-1">MRP</th>
-                    <th className="text-right p-1">Price</th>
+                    <th className="text-right p-1">{customerType === "wholesale" ? "Wholesale" : "Selling"}</th>
                     <th className="text-right p-1">Total</th>
                     <th></th>
                   </tr>
@@ -1168,6 +1210,24 @@ export default function CashierPage() {
       <TodaySalesPage
         isOpen={showTodaySales}
         onClose={() => setShowTodaySales(false)}
+        onPrintSale={(sale) => {
+          i18n.changeLanguage(storeSetting.receiptLanguage || "en");
+          setReceiptData({
+            ...sale,
+            storeName: storeSetting.storeName,
+            storeAddress: storeSetting.storeAddress,
+            storeContact: storeSetting.storeContact,
+            cashier: sale.cashierName || "",
+            invoiceNo: sale.invoiceNo || "",
+            saleItems: (sale.saleItems || []).map(si => ({
+              ...si,
+              name: si.productName || si.name || "",
+              regularPrice: si.regularPrice ?? si.price,
+            })),
+          });
+          setShowTodaySales(false);
+          setIsReceiptOpen(true);
+        }}
       />
 
       <BillReprintModal
@@ -1177,15 +1237,19 @@ export default function CashierPage() {
           refocusBarcodeInput();
         }}
         onReprintSale={(sale) => {
-          // Format the sale data properly for receipt
           i18n.changeLanguage(storeSetting.receiptLanguage || "en");
           setReceiptData({
             ...sale,
             storeName: storeSetting.storeName,
             storeAddress: storeSetting.storeAddress,
             storeContact: storeSetting.storeContact,
-            cashier: sale.cashier?.username || sale.cashier || "",
-            invoiceNo: sale.invoiceNo || sale.id || "",
+            cashier: sale.cashierName || "",
+            invoiceNo: sale.invoiceNo || "",
+            saleItems: (sale.saleItems || []).map(si => ({
+              ...si,
+              name: si.productName || si.name || "",
+              regularPrice: si.regularPrice ?? si.price,
+            })),
           });
           setShowBillReprintModal(false);
           setIsReceiptOpen(true);

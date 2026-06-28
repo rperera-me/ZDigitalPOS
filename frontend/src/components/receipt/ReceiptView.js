@@ -92,7 +92,7 @@ export default function ReceiptView({ saleData, templateName = 'ReceiptTemplate'
       storeAddress: saleData.storeAddress || "",
       storeContact: saleData.storeContact || "",
       invoiceNo: saleData.invoiceNo || saleData.id || "",
-      date: new Date(saleData.date).toLocaleString(),
+      date: new Date(saleData.saleDate || saleData.date).toLocaleString(),
       cashier: saleData.cashier || "",
       customer: saleData.customer || null,
       items: enhancedItems,

@@ -37,12 +37,11 @@ export default function ViewGRNModal({ isOpen, onClose, grn: initialGRN, onPayme
     }
   };
 
-  const fetchPayments = async () => {
-    if (!grn) return;
-
+  const fetchPayments = async (grnId) => {
+    if (!grnId) return;
     setLoadingPayments(true);
     try {
-      const response = await api.get(`/grn/${grn.id}/payments`);
+      const response = await api.get(`/grn/${grnId}/payments`);
       setPayments(response.data || []);
     } catch (error) {
       console.error("Failed to fetch payments:", error);
@@ -51,20 +50,29 @@ export default function ViewGRNModal({ isOpen, onClose, grn: initialGRN, onPayme
     }
   };
 
-  // ✅ FIXED: Update local GRN when prop changes
+  // Single effect: fires when the modal opens or when a different GRN is selected.
+  // Using initialGRN?.id (not the local grn state) avoids the stale-closure bug where
+  // fetchPayments captured the previous GRN's id before setGrn() had taken effect.
   useEffect(() => {
-    if (initialGRN) {
+    if (isOpen && initialGRN) {
       setGrn(initialGRN);
+      setPayments([]);  // clear stale payments from previous GRN immediately
+      setShowPaymentSection(false);
+      fetchPayments(initialGRN.id);
+      const remaining = initialGRN.totalAmount - initialGRN.paidAmount;
+      setNewPaymentAmount(remaining > 0 ? remaining.toFixed(2) : "");
     }
-  }, [initialGRN]);
-
-  useEffect(() => {
-    if (isOpen && grn) {
-      fetchPayments();
-      const remainingAmount = grn.totalAmount - grn.paidAmount;
-      setNewPaymentAmount(remainingAmount > 0 ? remainingAmount.toFixed(2) : "");
+    if (!isOpen) {
+      // Reset everything when modal closes so next open starts clean
+      setPayments([]);
+      setShowPaymentSection(false);
+      setNewPaymentAmount("");
+      setNewPaymentType("cash");
+      setNewChequeNumber("");
+      setNewChequeDate("");
+      setNewPaymentNotes("");
     }
-  }, [isOpen, grn]);
+  }, [isOpen, initialGRN?.id]);
 
   const handleSubmitPayment = async () => {
     if (!newPaymentAmount || parseFloat(newPaymentAmount) <= 0) {
@@ -109,9 +117,9 @@ export default function ViewGRNModal({ isOpen, onClose, grn: initialGRN, onPayme
       // ✅ FIXED: Update payment status first
       await api.put(`/grn/${grn.id}/payment-status`);
 
-      // ✅ FIXED: Refresh all data in correct order
-      await refreshGRN(); // Get updated GRN from server
-      await fetchPayments(); // Get updated payments list
+      // Refresh GRN then payments with the same id (grn.id is stable during this session)
+      await refreshGRN();
+      await fetchPayments(grn.id);
 
       // ✅ Notify parent components
       if (onPaymentAdded) {

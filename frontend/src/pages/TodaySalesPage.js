@@ -5,7 +5,7 @@ import { LastSaleModal } from "../components/modals";
 import { useTranslation } from "react-i18next";
 import storeSetting from "../config/storeSettings";
 
-export default function TodaySalesPage({ isOpen, onClose }) {
+export default function TodaySalesPage({ isOpen, onClose, onPrintSale }) {
     const { i18n } = useTranslation();
     const user = useSelector((state) => state.auth.user);
 
@@ -24,6 +24,11 @@ export default function TodaySalesPage({ isOpen, onClose }) {
         voidedSales: 0
     });
 
+    const toLocalISO = (date) => {
+        const pad = n => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    };
+
     const fetchTodaySales = async () => {
         setLoading(true);
         try {
@@ -34,8 +39,8 @@ export default function TodaySalesPage({ isOpen, onClose }) {
 
             const response = await api.get("/sale/daterange", {
                 params: {
-                    start: today.toISOString(),
-                    end: tomorrow.toISOString()
+                    start: toLocalISO(today),
+                    end: toLocalISO(tomorrow)
                 }
             });
 
@@ -106,9 +111,10 @@ export default function TodaySalesPage({ isOpen, onClose }) {
     };
 
     const handlePrintReceipt = (sale) => {
-        i18n.changeLanguage(storeSetting.receiptLanguage || "en");
-        setSelectedSale(sale);
-        setShowSaleModal(true);
+        setShowSaleModal(false);
+        if (onPrintSale) {
+            onPrintSale(sale);
+        }
     };
 
     useEffect(() => {
@@ -225,7 +231,7 @@ export default function TodaySalesPage({ isOpen, onClose }) {
                                                 </td>
                                                 <td className="p-3 text-center">
                                                     <span className="font-mono text-sm font-bold text-blue-600">
-                                                        #{sale.id}
+                                                        {sale.invoiceNo || `#${sale.id}`}
                                                     </span>
                                                     {isVoided && (
                                                         <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-semibold">
