@@ -64,6 +64,14 @@ namespace POS.Application.Handlers.Query
                     ReceivedByName = user?.Username ?? "",
                     TotalAmount = grn.TotalAmount,
                     Notes = grn.Notes,
+                    PaymentStatus = grn.PaymentStatus,
+                    PaidAmount = grn.PaidAmount,
+                    CreditAmount = grn.CreditAmount,
+                    PaymentType = grn.PaymentType,
+                    PaymentDate = grn.PaymentDate,
+                    ChequeNumber = grn.ChequeNumber,
+                    ChequeDate = grn.ChequeDate,
+                    PaymentNotes = grn.PaymentNotes,
                     Items = itemDtos
                 });
             }

@@ -5,7 +5,9 @@ namespace PosSystem.Application.DTOs
     public class SaleDto
     {
         public int Id { get; set; }
+        public string InvoiceNo { get; set; } = string.Empty;
         public int CashierId { get; set; }
+        public string CashierName { get; set; } = string.Empty;
         public int? CustomerId { get; set; }
         public CustomerDto? Customer { get; set; }
         public DateTime SaleDate { get; set; }

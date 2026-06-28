@@ -1,5 +1,6 @@
-﻿using MediatR;
+using MediatR;
 using POS.Application.DTOs;
+using POS.Domain.Repositories;
 using PosSystem.Application.DTOs;
 using PosSystem.Application.Queries.Sales;
 using PosSystem.Domain.Repositories;
@@ -11,24 +12,28 @@ namespace POS.Application.Handlers.Query
         private readonly ISaleRepository _repository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly IProductBatchRepository _batchRepository;
 
         public GetSaleByIdQueryHandler(
             ISaleRepository repository,
             ICustomerRepository customerRepository,
-            IProductRepository productRepository)
+            IProductRepository productRepository,
+            IUserRepository userRepository,
+            IProductBatchRepository batchRepository)
         {
             _repository = repository;
             _customerRepository = customerRepository;
             _productRepository = productRepository;
+            _userRepository = userRepository;
+            _batchRepository = batchRepository;
         }
 
         public async Task<SaleDto?> Handle(GetSaleByIdQuery request, CancellationToken cancellationToken)
         {
             var sale = await _repository.GetByIdAsync(request.Id);
-
             if (sale == null) return null;
 
-            // ✅ UPDATED - Fetch customer details if exists
             CustomerDto? customerDto = null;
             if (sale.CustomerId.HasValue)
             {
@@ -49,15 +54,30 @@ namespace POS.Application.Handlers.Query
                 }
             }
 
-            // ✅ UPDATED - Fetch product names for sale items
             var productIds = sale.SaleItems.Select(si => si.ProductId).Distinct();
             var products = await _productRepository.GetByIdsAsync(productIds);
             var productDict = products.ToDictionary(p => p.Id, p => p.Name);
 
+            var cashier = await _userRepository.GetByIdAsync(sale.CashierId);
+
+            // Batch-load ProductPrice (MRP) for each sale item from its batch
+            var batchPriceDict = new Dictionary<int, decimal>();
+            foreach (var si in sale.SaleItems.Where(si => si.BatchId.HasValue))
+            {
+                if (!batchPriceDict.ContainsKey(si.BatchId!.Value))
+                {
+                    var batch = await _batchRepository.GetByIdAsync(si.BatchId.Value);
+                    if (batch != null)
+                        batchPriceDict[si.BatchId.Value] = batch.ProductPrice;
+                }
+            }
+
             return new SaleDto
             {
                 Id = sale.Id,
+                InvoiceNo = $"INV-{sale.SaleDate:yyyy-MM}-{sale.Id:D6}",
                 CashierId = sale.CashierId,
+                CashierName = cashier?.Username ?? "",
                 CustomerId = sale.CustomerId,
                 Customer = customerDto,
                 SaleDate = sale.SaleDate,
@@ -78,7 +98,8 @@ namespace POS.Application.Handlers.Query
                     BatchId = si.BatchId,
                     BatchNumber = si.BatchNumber,
                     Quantity = si.Quantity,
-                    Price = si.Price
+                    Price = si.Price,
+                    RegularPrice = si.BatchId.HasValue && batchPriceDict.TryGetValue(si.BatchId.Value, out var mrp) ? mrp : si.Price
                 }).ToList(),
                 Payments = sale.Payments.Select(p => new PaymentDto
                 {

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using POS.Application.Commands.Sales;
 using POS.Application.DTOs;
+using POS.Domain.Repositories;
 using PosSystem.Application.Commands.Sales;
 using PosSystem.Application.DTOs;
 using PosSystem.Application.Queries.Sales;
@@ -17,17 +18,23 @@ namespace PosSystem.Controllers
         private readonly ISaleRepository _saleRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly IProductBatchRepository _batchRepository;
 
         public SaleController(
             IMediator mediator,
             ISaleRepository saleRepository,
             ICustomerRepository customerRepository,
-            IProductRepository productRepository)
+            IProductRepository productRepository,
+            IUserRepository userRepository,
+            IProductBatchRepository batchRepository)
         {
             _mediator = mediator;
             _saleRepository = saleRepository;
             _customerRepository = customerRepository;
             _productRepository = productRepository;
+            _userRepository = userRepository;
+            _batchRepository = batchRepository;
         }
 
         [HttpGet("{id}")]
@@ -92,15 +99,30 @@ namespace PosSystem.Controllers
                 }
             }
 
-            // Get product names for sale items
             var productIds = lastSale.SaleItems.Select(si => si.ProductId).Distinct();
             var products = await _productRepository.GetByIdsAsync(productIds);
             var productDict = products.ToDictionary(p => p.Id, p => p.Name);
 
+            var cashier = await _userRepository.GetByIdAsync(lastSale.CashierId);
+
+            // Load ProductPrice (MRP) for each sale item from its batch
+            var batchPriceDict = new Dictionary<int, decimal>();
+            foreach (var si in lastSale.SaleItems.Where(si => si.BatchId.HasValue))
+            {
+                if (!batchPriceDict.ContainsKey(si.BatchId!.Value))
+                {
+                    var batch = await _batchRepository.GetByIdAsync(si.BatchId.Value);
+                    if (batch != null)
+                        batchPriceDict[si.BatchId.Value] = batch.ProductPrice;
+                }
+            }
+
             var saleDto = new SaleDto
             {
                 Id = lastSale.Id,
+                InvoiceNo = $"INV-{lastSale.SaleDate:yyyy-MM}-{lastSale.Id:D6}",
                 CashierId = lastSale.CashierId,
+                CashierName = cashier?.Username ?? "",
                 CustomerId = lastSale.CustomerId,
                 Customer = customerDto,
                 SaleDate = lastSale.SaleDate,
@@ -121,7 +143,8 @@ namespace PosSystem.Controllers
                     BatchId = si.BatchId,
                     BatchNumber = si.BatchNumber,
                     Quantity = si.Quantity,
-                    Price = si.Price
+                    Price = si.Price,
+                    RegularPrice = si.BatchId.HasValue && batchPriceDict.TryGetValue(si.BatchId.Value, out var mrp) ? mrp : si.Price
                 }).ToList(),
                 Payments = lastSale.Payments.Select(p => new PaymentDto
                 {

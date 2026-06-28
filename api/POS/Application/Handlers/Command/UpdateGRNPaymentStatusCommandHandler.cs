@@ -78,7 +78,25 @@ namespace POS.Application.Handlers.Command
                 });
             }
 
-            // ✅ RETURN COMPLETE DTO instead of minimal one
+            var paymentDtos = new List<GRNPaymentDto>();
+            foreach (var p in payments)
+            {
+                var paymentUser = await _userRepository.GetByIdAsync(p.RecordedBy);
+                paymentDtos.Add(new GRNPaymentDto
+                {
+                    Id = p.Id,
+                    GRNId = p.GRNId,
+                    PaymentDate = p.PaymentDate,
+                    PaymentType = p.PaymentType,
+                    Amount = p.Amount,
+                    ChequeNumber = p.ChequeNumber,
+                    ChequeDate = p.ChequeDate,
+                    Notes = p.Notes,
+                    RecordedBy = p.RecordedBy,
+                    RecordedByName = paymentUser?.Username ?? ""
+                });
+            }
+
             return new GRNDto
             {
                 Id = updatedGRN.Id,
@@ -93,20 +111,13 @@ namespace POS.Application.Handlers.Command
                 PaymentStatus = paymentStatus,
                 PaidAmount = totalPaid,
                 CreditAmount = creditAmount > 0 ? creditAmount : 0,
+                PaymentType = updatedGRN.PaymentType,
+                PaymentDate = updatedGRN.PaymentDate,
+                ChequeNumber = updatedGRN.ChequeNumber,
+                ChequeDate = updatedGRN.ChequeDate,
+                PaymentNotes = updatedGRN.PaymentNotes,
                 Items = itemDtos,
-                Payments = payments.Select(p => new GRNPaymentDto
-                {
-                    Id = p.Id,
-                    GRNId = p.GRNId,
-                    PaymentDate = p.PaymentDate,
-                    PaymentType = p.PaymentType,
-                    Amount = p.Amount,
-                    ChequeNumber = p.ChequeNumber,
-                    ChequeDate = p.ChequeDate,
-                    Notes = p.Notes,
-                    RecordedBy = p.RecordedBy,
-                    RecordedByName = user?.Username ?? ""
-                }).ToList()
+                Payments = paymentDtos
             };
         }
     }
