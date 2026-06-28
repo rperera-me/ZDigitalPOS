@@ -9,6 +9,8 @@ namespace PosSystem.Application.Commands.Products
         public string Barcode { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public int CategoryId { get; set; }
-        public int StockQuantity { get; set; }
+        public decimal StockQuantity { get; set; }
+        public bool IsBestSelling { get; set; }
+        public string MeasureType { get; set; } = "Unit";
     }
 }

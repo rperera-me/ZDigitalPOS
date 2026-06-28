@@ -287,6 +287,7 @@ export default function PaymentModal({
                 step="0.01"
                 value={cashAmount}
                 onChange={handleCashChange}
+                onWheel={(e) => e.target.blur()}
                 className="w-full border-2 border-gray-300 rounded-lg p-3 text-lg focus:outline-none focus:border-green-500"
                 placeholder="Enter cash amount"
                 autoComplete="off"
@@ -330,6 +331,7 @@ export default function PaymentModal({
                   step="0.01"
                   value={cardAmount}
                   onChange={handleCardAmountChange}
+                  onWheel={(e) => e.target.blur()}
                   className="w-full border-2 border-gray-300 rounded-lg p-3 text-lg focus:outline-none focus:border-blue-500"
                   placeholder="Enter card amount"
                   autoComplete="off"
@@ -420,6 +422,7 @@ export default function PaymentModal({
                           step="0.01"
                           value={creditAmount}
                           readOnly
+                          onWheel={(e) => e.target.blur()}
                           className="w-full border-2 border-orange-300 rounded-lg p-3 text-lg bg-orange-50 font-bold text-orange-600"
                           placeholder="Credit amount"
                         />
@@ -478,6 +481,7 @@ export default function PaymentModal({
                     step="0.01"
                     value={discountValue}
                     onChange={handleDiscountValueChange}
+                    onWheel={(e) => e.target.blur()}
                     className="flex-1 border-2 border-purple-300 rounded-lg px-3 py-2 text-lg focus:outline-none focus:border-purple-500"
                     placeholder={discountType === "percentage" ? "Enter %" : "Enter amount"}
                   />

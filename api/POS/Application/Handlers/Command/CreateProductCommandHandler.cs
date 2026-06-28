@@ -52,7 +52,8 @@ namespace POS.Application.Handlers.Command
                 Name = request.Name,
                 CategoryId = request.CategoryId,
                 StockQuantity = request.StockQuantity,
-                HasMultipleProductPrices = false
+                HasMultipleProductPrices = false,
+                MeasureType = request.MeasureType ?? "Unit"
             };
 
             var created = await _productRepository.AddAsync(entity);
@@ -95,6 +96,8 @@ namespace POS.Application.Handlers.Command
                 CategoryName = category?.Name ?? "",
                 StockQuantity = created.StockQuantity,
                 HasMultipleProductPrices = created.HasMultipleProductPrices,
+                IsBestSelling = created.IsBestSelling,
+                MeasureType = created.MeasureType,
                 Batches = await MapBatchesToDto(batches)
             };
             return dto;

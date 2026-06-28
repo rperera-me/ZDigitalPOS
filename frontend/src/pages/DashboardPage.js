@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDashboardStats, fetchLowStock, fetchBestSellers } from "../app/dashboardSlice";
 import { fetchCurrentUser } from "../app/userSlice";
-import storeSettings from "../config/storeSettings";
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
   const { stats, loading, error, lowStock, bestSellers } = useSelector((state) => state.dashboard);
   const { data: userData } = useSelector((state) => state.user);
+  const storeSettings = useSelector((state) => state.settings);
   const [date, setDate] = useState(new Date());
 
   useEffect(() => {

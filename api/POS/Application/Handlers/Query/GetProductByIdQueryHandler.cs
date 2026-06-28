@@ -47,7 +47,9 @@ namespace POS.Application.Handlers.Query
                 CategoryName = category?.Name ?? "",
                 StockQuantity = product.StockQuantity,
                 HasMultipleProductPrices = product.HasMultipleProductPrices,
-                Batches = await MapBatchesToDto(batches) // Use same helper method
+                IsBestSelling = product.IsBestSelling,
+                MeasureType = product.MeasureType,
+                Batches = await MapBatchesToDto(batches)
             };
         }
 

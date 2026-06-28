@@ -10,8 +10,8 @@
         public decimal ProductPrice { get; set; }
         public decimal SellingPrice { get; set; }
         public decimal WholesalePrice { get; set; }
-        public int Quantity { get; set; }
-        public int RemainingQuantity { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal RemainingQuantity { get; set; }
         public DateTime? ManufactureDate { get; set; }
         public DateTime? ExpiryDate { get; set; }
         public DateTime ReceivedDate { get; set; } = DateTime.Now;

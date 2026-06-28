@@ -12,5 +12,7 @@ namespace PosSystem.Domain.Repositories
         Task<Product> UpdateAsync(Product product);
         Task DeleteAsync(int id);
         Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<int> productIds);
+        Task<IEnumerable<Product>> GetBestSellingAsync();
+        Task SetBestSellingAsync(int id, bool isBestSelling);
     }
 }

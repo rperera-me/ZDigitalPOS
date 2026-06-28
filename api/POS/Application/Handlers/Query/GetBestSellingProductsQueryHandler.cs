@@ -1,23 +1,21 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
+using MediatR;
 using POS.Application.DTOs;
 using POS.Domain.Entities;
 using POS.Domain.Repositories;
-using POS.Infrastructure.Repositories;
-using PosSystem.Application.Commands.Products;
 using PosSystem.Application.DTOs;
+using PosSystem.Application.Queries.Products;
 using PosSystem.Domain.Repositories;
 
-namespace POS.Application.Handlers.Command
+namespace POS.Application.Handlers.Query
 {
-    public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand, ProductDto>
+    public class GetBestSellingProductsQueryHandler : IRequestHandler<GetBestSellingProductsQuery, IEnumerable<ProductDto>>
     {
         private readonly IProductRepository _productRepository;
         private readonly IProductBatchRepository _batchRepository;
         private readonly ICategoryRepository _categoryRepository;
         private readonly ISupplierRepository _supplierRepository;
 
-        public UpdateProductCommandHandler(
+        public GetBestSellingProductsQueryHandler(
             IProductRepository productRepository,
             IProductBatchRepository batchRepository,
             ICategoryRepository categoryRepository,
@@ -29,42 +27,36 @@ namespace POS.Application.Handlers.Command
             _supplierRepository = supplierRepository;
         }
 
-        public async Task<ProductDto> Handle(UpdateProductCommand request, CancellationToken cancellationToken)
+        public async Task<IEnumerable<ProductDto>> Handle(GetBestSellingProductsQuery request, CancellationToken cancellationToken)
         {
-            var existing = await _productRepository.GetByIdAsync(request.Id);
-            if (existing == null) throw new KeyNotFoundException("Product not found");
+            var products = await _productRepository.GetBestSellingAsync();
+            var productDtos = new List<ProductDto>();
 
-            existing.Barcode = request.Barcode;
-            existing.Name = request.Name;
-            existing.CategoryId = request.CategoryId;
-            existing.StockQuantity = request.StockQuantity;
-            existing.IsBestSelling = request.IsBestSelling;
-            existing.MeasureType = request.MeasureType ?? "Unit";
-
-            var updated = await _productRepository.UpdateAsync(existing);
-
-            // Fetch names for DTO
-            var category = await _categoryRepository.GetByIdAsync(updated.CategoryId);
-
-            var batches = (await _batchRepository.GetActiveBatchesByProductIdAsync(updated.Id))
-                .OrderBy(b => b.ReceivedDate)
-                .ToList();
-
-            var dto = new ProductDto
+            foreach (var product in products)
             {
-                Id = updated.Id,
-                Barcode = updated.Barcode,
-                Name = updated.Name,
-                CategoryId = updated.CategoryId,
-                CategoryName = category?.Name ?? "",
-                StockQuantity = updated.StockQuantity,
-                HasMultipleProductPrices = updated.HasMultipleProductPrices,
-                IsBestSelling = updated.IsBestSelling,
-                MeasureType = updated.MeasureType,
-                Batches = await MapBatchesToDto(batches)
-            };
+                var category = await _categoryRepository.GetByIdAsync(product.CategoryId);
+                var batches = (await _batchRepository.GetActiveBatchesByProductIdAsync(product.Id))
+                    .OrderBy(b => b.ReceivedDate)
+                    .ToList();
 
-            return dto;
+                var dto = new ProductDto
+                {
+                    Id = product.Id,
+                    Barcode = product.Barcode,
+                    Name = product.Name,
+                    CategoryId = product.CategoryId,
+                    CategoryName = category?.Name ?? "",
+                    StockQuantity = product.StockQuantity,
+                    HasMultipleProductPrices = product.HasMultipleProductPrices,
+                    IsBestSelling = product.IsBestSelling,
+                    MeasureType = product.MeasureType,
+                    Batches = await MapBatchesToDto(batches)
+                };
+
+                productDtos.Add(dto);
+            }
+
+            return productDtos;
         }
 
         private async Task<List<ProductBatchDto>> MapBatchesToDto(List<ProductBatch> batches)

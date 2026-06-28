@@ -3,11 +3,11 @@ import { useSelector } from "react-redux";
 import api from "../api/axios";
 import { LastSaleModal } from "../components/modals";
 import { useTranslation } from "react-i18next";
-import storeSetting from "../config/storeSettings";
 
 export default function TodaySalesPage({ isOpen, onClose, onPrintSale }) {
     const { i18n } = useTranslation();
     const user = useSelector((state) => state.auth.user);
+    const storeSetting = useSelector((state) => state.settings);
 
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -126,8 +126,8 @@ export default function TodaySalesPage({ isOpen, onClose, onPrintSale }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={onClose}>
+            <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-700">
                     <h3 className="text-2xl font-bold text-white flex items-center gap-2">

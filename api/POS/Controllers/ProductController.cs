@@ -104,5 +104,31 @@ namespace PosSystem.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpGet("best-selling")]
+        public async Task<ActionResult<IEnumerable<ProductDto>>> GetBestSelling()
+        {
+            var products = await _mediator.Send(new GetBestSellingProductsQuery());
+            return Ok(products);
+        }
+
+        [HttpPatch("{id}/best-selling")]
+        public async Task<IActionResult> SetBestSelling(int id, [FromBody] SetBestSellingRequest body)
+        {
+            try
+            {
+                await _mediator.Send(new SetBestSellingCommand { Id = id, IsBestSelling = body.IsBestSelling });
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+    }
+
+    public class SetBestSellingRequest
+    {
+        public bool IsBestSelling { get; set; }
     }
 }

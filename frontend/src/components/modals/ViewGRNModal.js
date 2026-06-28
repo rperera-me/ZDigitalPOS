@@ -146,8 +146,8 @@ export default function ViewGRNModal({ isOpen, onClose, grn: initialGRN, onPayme
   if (!isOpen || !grn) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b-2 border-gray-200 bg-gradient-to-r from-blue-500 to-blue-700">
           <div>
@@ -286,6 +286,7 @@ export default function ViewGRNModal({ isOpen, onClose, grn: initialGRN, onPayme
                         type="number"
                         value={newPaymentAmount}
                         onChange={(e) => setNewPaymentAmount(e.target.value)}
+                        onWheel={(e) => e.target.blur()}
                         className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200"
                         placeholder="0.00"
                         step="0.01"

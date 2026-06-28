@@ -27,7 +27,7 @@
         public int GRNId { get; set; }
         public int ProductId { get; set; }
         public string BatchNumber { get; set; } = string.Empty;
-        public int Quantity { get; set; }
+        public decimal Quantity { get; set; }
         public decimal CostPrice { get; set; }
         public decimal ProductPrice { get; set; }
         public DateTime? ManufactureDate { get; set; }

@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import Handlebars from "handlebars";
 import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
 import "./ReceiptView.css";
 
 // Import all available templates
@@ -47,7 +48,22 @@ if (!Handlebars.helpers.gt) {
  * @param {string} templateName - Template to use (default: 'ReceiptTemplate')
  */
 export default function ReceiptView({ saleData, templateName = 'ReceiptTemplate' }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { paperWidth } = useSelector((state) => state.settings);
+
+  // Inject a dynamic @page size rule so web printing respects the paper width setting.
+  // Falls back to 80mm when not overridden.
+  useEffect(() => {
+    const styleId = "receipt-page-size";
+    let el = document.getElementById(styleId);
+    if (!el) {
+      el = document.createElement("style");
+      el.id = styleId;
+      document.head.appendChild(el);
+    }
+    const size = !paperWidth || paperWidth === "auto" ? "A4" : paperWidth;
+    el.textContent = `@media print { @page { size: ${size} auto; margin: 0; } }`;
+  }, [paperWidth]);
 
   const receiptHtml = useMemo(() => {
     if (!saleData) return "";
@@ -91,6 +107,7 @@ export default function ReceiptView({ saleData, templateName = 'ReceiptTemplate'
       storeName: saleData.storeName || "",
       storeAddress: saleData.storeAddress || "",
       storeContact: saleData.storeContact || "",
+      storeLogo: saleData.storeLogo || "",
       invoiceNo: saleData.invoiceNo || saleData.id || "",
       date: new Date(saleData.saleDate || saleData.date).toLocaleString(),
       cashier: saleData.cashier || "",
@@ -114,11 +131,16 @@ export default function ReceiptView({ saleData, templateName = 'ReceiptTemplate'
     };
     
     return template(data);
-  }, [saleData, t, templateName]); // Added templateName to dependencies
+  }, [saleData, t, i18n.language, templateName]);
+
+  const widthStyle = paperWidth && paperWidth !== "80mm"
+    ? { width: paperWidth === "auto" ? "auto" : paperWidth, maxWidth: paperWidth === "auto" ? "none" : paperWidth }
+    : undefined;
 
   return (
     <div
       className="receipt-preview"
+      style={widthStyle}
       dangerouslySetInnerHTML={{ __html: receiptHtml }}
     />
   );

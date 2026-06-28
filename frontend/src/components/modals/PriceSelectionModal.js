@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 
-export default function PriceSelectionModal({ isOpen, onClose, product, priceVariants, onSelectPrice, customerType = "retail" }) {
+export default function PriceSelectionModal({ isOpen, onClose, product, priceVariants, onSelectPrice, customerType = "retail", measureType = "Unit" }) {
     const [selectedVariant, setSelectedVariant] = useState(null);
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(measureType === "Kg" ? "" : 1);
+
+    const isKg = measureType === "Kg";
 
     if (!isOpen || !product || !priceVariants || priceVariants.length === 0) return null;
 
@@ -12,31 +14,37 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
             return;
         }
 
-        if (quantity > selectedVariant.totalStock) {
+        const qty = isKg ? parseFloat(quantity) : parseInt(quantity);
+        if (!qty || qty <= 0) {
+            alert(isKg ? "Please enter a valid weight." : "Please enter a valid quantity.");
+            return;
+        }
+
+        if (!isKg && qty > selectedVariant.totalStock) {
             alert(`Only ${selectedVariant.totalStock} items available at this price`);
             return;
         }
 
-        onSelectPrice(selectedVariant, quantity);
+        onSelectPrice(selectedVariant, qty);
         setSelectedVariant(null);
-        setQuantity(1);
+        setQuantity(isKg ? "" : 1);
     };
 
     const handleClose = () => {
         setSelectedVariant(null);
-        setQuantity(1);
+        setQuantity(isKg ? "" : 1);
         onClose();
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-            <div className="bg-white rounded-lg p-4 max-w-xl w-full max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={handleClose}>
+            <div className="bg-white rounded-lg p-4 max-w-xl w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-3">
                     <div>
                         <h3 className="text-lg font-bold">{product.name}</h3>
                         <p className="text-xs text-gray-600">
                             Total Stock: <span className="font-semibold">
-                                {priceVariants.reduce((sum, v) => sum + v.totalStock, 0)} units
+                                {priceVariants.reduce((sum, v) => sum + v.totalStock, 0)} {isKg ? "kg" : "units"}
                             </span>
                         </p>
                     </div>
@@ -74,7 +82,7 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                             </svg>
-                                            <span className="font-semibold">{variant.totalStock} available</span>
+                                            <span className="font-semibold">{variant.totalStock} {isKg ? "kg" : ""} available</span>
                                         </div>
 
                                         {/* Batch Number */}
@@ -114,31 +122,51 @@ export default function PriceSelectionModal({ isOpen, onClose, product, priceVar
                     <div className="w-1/2 flex flex-col items-end gap-2">
                         {selectedVariant && (
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">Quantity</span>
+                                <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                                    {isKg ? "Weight (kg)" : "Quantity"}
+                                </span>
                                 <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
-                                    <button
-                                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="bg-gray-300 hover:bg-gray-400 px-2 py-1 rounded font-bold text-sm"
-                                    >
-                                        −
-                                    </button>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={selectedVariant.totalStock}
-                                        value={quantity}
-                                        onChange={(e) =>
-                                            setQuantity(Math.min(selectedVariant.totalStock, parseInt(e.target.value) || 1))
-                                        }
-                                        className="w-12 border border-gray-300 rounded p-1 text-center font-bold text-sm"
-                                    />
-                                    <button
-                                        onClick={() => setQuantity(Math.min(selectedVariant.totalStock, quantity + 1))}
-                                        className="bg-gray-300 hover:bg-gray-400 px-2 py-1 rounded font-bold text-sm"
-                                    >
-                                        +
-                                    </button>
+                                    {isKg ? (
+                                        <input
+                                            type="number"
+                                            min="0.001"
+                                            step="0.001"
+                                            value={quantity}
+                                            onChange={(e) => setQuantity(e.target.value)}
+                                            onWheel={(e) => e.target.blur()}
+                                            placeholder="0.000"
+                                            className="w-20 border border-gray-300 rounded p-1 text-center font-bold text-sm"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                                className="bg-gray-300 hover:bg-gray-400 px-2 py-1 rounded font-bold text-sm"
+                                            >
+                                                −
+                                            </button>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max={selectedVariant.totalStock}
+                                                value={quantity}
+                                                onChange={(e) =>
+                                                    setQuantity(Math.min(selectedVariant.totalStock, parseInt(e.target.value) || 1))
+                                                }
+                                                onWheel={(e) => e.target.blur()}
+                                                className="w-12 border border-gray-300 rounded p-1 text-center font-bold text-sm"
+                                            />
+                                            <button
+                                                onClick={() => setQuantity(Math.min(selectedVariant.totalStock, quantity + 1))}
+                                                className="bg-gray-300 hover:bg-gray-400 px-2 py-1 rounded font-bold text-sm"
+                                            >
+                                                +
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
+                                {isKg && <span className="text-sm text-orange-600 font-semibold">⚖️</span>}
                             </div>
                         )}
                         <button

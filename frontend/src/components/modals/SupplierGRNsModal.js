@@ -65,8 +65,8 @@ export default function SupplierGRNsModal({ isOpen, onClose, supplier }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50">
-        <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] flex flex-col overflow-hidden">
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50" onClick={onClose}>
+        <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex justify-between items-center p-2 border-b-2 border-gray-200 bg-gradient-to-r from-indigo-500 to-purple-600">
             <div>

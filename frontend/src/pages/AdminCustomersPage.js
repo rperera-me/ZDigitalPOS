@@ -422,8 +422,8 @@ function EditCustomerModal({
   if (!isOpen || !customer) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={onClose}>
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-bold text-gray-800">Edit Customer</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -480,6 +480,7 @@ function EditCustomerModal({
                 type="number"
                 value={editCreditBalance}
                 onChange={(e) => setEditCreditBalance(e.target.value)}
+                onWheel={(e) => e.target.blur()}
                 className="w-full border-2 border-gray-300 rounded-lg p-2"
                 step="0.01"
               />
@@ -491,6 +492,7 @@ function EditCustomerModal({
                   type="number"
                   value={editLoyaltyPoints}
                   onChange={(e) => setEditLoyaltyPoints(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   className="w-full border-2 border-gray-300 rounded-lg p-2"
                 />
               </div>

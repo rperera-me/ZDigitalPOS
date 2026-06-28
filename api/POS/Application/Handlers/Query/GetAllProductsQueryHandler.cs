@@ -50,8 +50,8 @@ namespace POS.Application.Handlers.Query
                     CategoryName = category?.Name ?? "",
                     StockQuantity = product.StockQuantity,
                     HasMultipleProductPrices = product.HasMultipleProductPrices,
-
-                    // Map batches with supplier names
+                    IsBestSelling = product.IsBestSelling,
+                    MeasureType = product.MeasureType,
                     Batches = await MapBatchesToDto(batches)
                 };
 

@@ -12,6 +12,7 @@ export default function AdminProductsPage() {
   const [barcode, setBarcode] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
+  const [measureType, setMeasureType] = useState("Unit");
 
   // Price fields - shown only when quantity > 0
   const [costPrice, setCostPrice] = useState("");
@@ -45,6 +46,7 @@ export default function AdminProductsPage() {
     setBarcode("");
     setCategoryId("");
     setStockQuantity("");
+    setMeasureType("Unit");
     setCostPrice("");
     setProductPrice("");
     setSellingPrice("");
@@ -53,7 +55,7 @@ export default function AdminProductsPage() {
     setExpiryDate("");
   };
 
-  const hasQuantity = parseInt(stockQuantity) > 0;
+  const hasQuantity = parseFloat(stockQuantity) > 0;
 
   const addProduct = () => {
     if (!name || !barcode || !categoryId) {
@@ -73,7 +75,8 @@ export default function AdminProductsPage() {
       name,
       barcode,
       categoryId: parseInt(categoryId),
-      stockQuantity: parseInt(stockQuantity) || 0,
+      stockQuantity: parseFloat(stockQuantity) || 0,
+      measureType,
       ...(hasQuantity && {
         costPrice: parseFloat(costPrice),
         productPrice: parseFloat(productPrice),
@@ -113,6 +116,15 @@ export default function AdminProductsPage() {
 
   const handleProductUpdated = () => {
     api.get("/product").then((res) => dispatch(setProducts(res.data)));
+  };
+
+  const handleToggleBestSelling = (product) => {
+    const newValue = !product.isBestSelling;
+    api.patch(`/product/${product.id}/best-selling`, { isBestSelling: newValue })
+      .then(() => {
+        api.get("/product").then((res) => dispatch(setProducts(res.data)));
+      })
+      .catch(() => alert("Failed to update best-selling status."));
   };
 
   useEffect(() => {
@@ -223,15 +235,52 @@ export default function AdminProductsPage() {
 
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700">
+              Measure Type <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-3 mt-1">
+              {[
+                { value: "Unit", label: "Unit", icon: "📦", desc: "Whole items (pcs, bottles…)" },
+                { value: "Kg", label: "Kg (Scale)", icon: "⚖️", desc: "Weight in kilograms" },
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex-1 flex items-center gap-2 border-2 rounded-lg p-2 cursor-pointer transition ${
+                    measureType === opt.value
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-300 hover:border-blue-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="measureType"
+                    value={opt.value}
+                    checked={measureType === opt.value}
+                    onChange={() => setMeasureType(opt.value)}
+                    className="accent-blue-600"
+                  />
+                  <span className="text-lg">{opt.icon}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-800">{opt.label}</div>
+                    <div className="text-xs text-gray-500">{opt.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
               Stock Quantity (Optional)
             </label>
             <input
               type="number"
               className="w-full border-2 border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500"
-              placeholder="Stock Quantity"
+              placeholder={measureType === "Kg" ? "Stock in kg (e.g. 50.5)" : "Stock Quantity"}
               value={stockQuantity}
               onChange={(e) => setStockQuantity(e.target.value)}
+              onWheel={(e) => e.target.blur()}
               min="0"
+              step={measureType === "Kg" ? "0.001" : "1"}
             />
           </div>
         </div>
@@ -254,6 +303,7 @@ export default function AdminProductsPage() {
                   placeholder="Cost Price"
                   value={costPrice}
                   onChange={(e) => setCostPrice(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   min="0"
                   step="1"
                 />
@@ -261,7 +311,7 @@ export default function AdminProductsPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Product Price (MRP) <span className="text-red-500">*</span>
+                  {measureType === "Kg" ? "Kg Price (MRP)" : "Unit Price (MRP)"} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -269,6 +319,7 @@ export default function AdminProductsPage() {
                   placeholder="Product Price"
                   value={productPrice}
                   onChange={(e) => setProductPrice(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   min="0"
                   step="1"
                 />
@@ -284,6 +335,7 @@ export default function AdminProductsPage() {
                   placeholder="Selling Price"
                   value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   min="0"
                   step="1"
                 />
@@ -299,6 +351,7 @@ export default function AdminProductsPage() {
                   placeholder="Wholesale Price"
                   value={wholesalePrice}
                   onChange={(e) => setWholesalePrice(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   min="0"
                   step="1"
                 />
@@ -364,11 +417,13 @@ export default function AdminProductsPage() {
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-3 text-left text-sm font-semibold">Name</th>
+                <th className="p-3 text-left text-sm font-semibold">Type</th>
                 <th className="p-3 text-left text-sm font-semibold">Barcode</th>
                 <th className="p-3 text-left text-sm font-semibold">Category</th>
                 <th className="p-3 text-right text-sm font-semibold">Cost Price</th>
                 <th className="p-3 text-right text-sm font-semibold">Selling Price</th>
                 <th className="p-3 text-center text-sm font-semibold">Stock</th>
+                <th className="p-3 text-center text-sm font-semibold">Best Selling</th>
                 <th className="p-3 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
@@ -381,6 +436,17 @@ export default function AdminProductsPage() {
                 return (
                   <tr key={p.id} className="border-t hover:bg-gray-50">
                     <td className="p-3 text-sm font-medium">{p.name}</td>
+                    <td className="p-3">
+                      {p.measureType === "Kg" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                          ⚖️ Kg
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                          📦 Unit
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3 text-sm font-mono text-blue-600">{p.barcode}</td>
                     <td className="p-3 text-sm">{category?.name || '-'}</td>
 
@@ -429,6 +495,16 @@ export default function AdminProductsPage() {
                     </td>
 
                     <td className="p-3 text-center">
+                      <button
+                        onClick={() => handleToggleBestSelling(p)}
+                        title={p.isBestSelling ? "Remove from Best Selling" : "Add to Best Selling"}
+                        className={`text-2xl transition-transform hover:scale-110 ${p.isBestSelling ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}`}
+                      >
+                        ★
+                      </button>
+                    </td>
+
+                    <td className="p-3 text-center">
                       <div className="flex gap-2 justify-center">
                         <button
                           onClick={() => handleEditProduct(p)}
@@ -460,8 +536,8 @@ export default function AdminProductsPage() {
 
       {/* Price Breakdown Modal */}
       {viewingStockByPrice && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={() => setViewingStockByPrice(null)}>
+          <div className="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-xl font-bold">{viewingStockByPrice.name}</h3>
@@ -482,37 +558,68 @@ export default function AdminProductsPage() {
               </button>
             </div>
 
-            {priceBreakdown.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <p>No price variants found</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {priceBreakdown.map((variant, index) => (
-                  <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
-                      <div className="grid grid-cols-4 gap-4">
-                        <div>
-                          <div className="text-xs opacity-80">Product Price (MRP)</div>
-                          <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs opacity-80">Selling Price</div>
-                          <div className="text-xl font-semibold">Rs {variant.sellingPrice.toFixed(2)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs opacity-80">Wholesale Price</div>
-                          <div className="text-xl font-semibold">Rs {variant.wholesalePrice.toFixed(2)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs opacity-80">Total Stock</div>
-                          <div className="text-2xl font-bold">{variant.totalStock} units</div>
-                        </div>
+            {viewingStockByPrice.measureType === "Kg" ? (
+              priceBreakdown.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No price data found</p>
+                </div>
+              ) : (
+                <div className="border-2 border-orange-200 rounded-lg overflow-hidden">
+                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4">
+                    <div className="grid grid-cols-4 gap-4">
+                      <div>
+                        <div className="text-xs opacity-80">Kg Price (MRP)</div>
+                        <div className="text-2xl font-bold">Rs {priceBreakdown[0].productPrice.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs opacity-80">Selling Price / kg</div>
+                        <div className="text-xl font-semibold">Rs {priceBreakdown[0].sellingPrice.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs opacity-80">Wholesale Price / kg</div>
+                        <div className="text-xl font-semibold">Rs {priceBreakdown[0].wholesalePrice.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs opacity-80">Total Stock</div>
+                        <div className="text-2xl font-bold">{viewingStockByPrice.stockQuantity} kg</div>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              )
+            ) : (
+              priceBreakdown.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No price variants found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {priceBreakdown.map((variant, index) => (
+                    <div key={index} className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
+                        <div className="grid grid-cols-4 gap-4">
+                          <div>
+                            <div className="text-xs opacity-80">Unit Price (MRP)</div>
+                            <div className="text-2xl font-bold">Rs {variant.productPrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs opacity-80">Selling Price</div>
+                            <div className="text-xl font-semibold">Rs {variant.sellingPrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs opacity-80">Wholesale Price</div>
+                            <div className="text-xl font-semibold">Rs {variant.wholesalePrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs opacity-80">Total Stock</div>
+                            <div className="text-2xl font-bold">{variant.totalStock} units</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         </div>

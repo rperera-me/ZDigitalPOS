@@ -1,7 +1,9 @@
 export const receiptTemplate = `
 <div class="receipt-container">
   <div class="receipt-header">
-    <img src="logo192.png" alt="Store Logo" class="store-logo" />
+    {{#if storeLogo}}
+    <img src="{{{storeLogo}}}" alt="Store Logo" class="store-logo" />
+    {{/if}}
     <h2 class="store-name">{{storeName}}</h2>
     <p class="store-address">{{storeAddress}}</p>
     <p class="store-contact">{{storeContact}}</p>

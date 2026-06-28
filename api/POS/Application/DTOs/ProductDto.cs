@@ -9,8 +9,10 @@ namespace PosSystem.Application.DTOs
         public string Name { get; set; } = string.Empty;
         public int CategoryId { get; set; }
         public string CategoryName { get; set; } = string.Empty;
-        public int StockQuantity { get; set; }
+        public decimal StockQuantity { get; set; }
         public bool HasMultipleProductPrices { get; set; }
+        public bool IsBestSelling { get; set; }
+        public string MeasureType { get; set; } = "Unit";
         public List<ProductBatchDto>? Batches { get; set; }
     }
 
@@ -19,7 +21,7 @@ namespace PosSystem.Application.DTOs
         public decimal ProductPrice { get; set; }
         public decimal SellingPrice { get; set; }
         public decimal WholesalePrice { get; set; }
-        public int TotalStock { get; set; }
+        public decimal TotalStock { get; set; }
         public List<PriceVariantSourceDto> Sources { get; set; } = new List<PriceVariantSourceDto>();
     }
 
@@ -29,7 +31,7 @@ namespace PosSystem.Application.DTOs
         public string GRNNumber { get; set; } = string.Empty;
         public int SourceId { get; set; }
         public string? SourceReference { get; set; }
-        public int Stock { get; set; }
+        public decimal Stock { get; set; }
         public DateTime ReceivedDate { get; set; }
     }
 }

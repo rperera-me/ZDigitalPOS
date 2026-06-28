@@ -23,7 +23,7 @@ namespace PosSystem.Application.DTOs
         public decimal FinalAmount { get; set; }
         public string PaymentType { get; set; } = string.Empty;
         public List<PaymentDto> Payments { get; set; } = new List<PaymentDto>();
-        public int ItemCount { get; set; }
+        public decimal ItemCount { get; set; }
         public bool IsVoided { get; set; }
     }
 }

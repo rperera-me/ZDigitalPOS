@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage";
 import NavigationBar from "./components/NavigationBar";
 import GRNPage from "./pages/GRNPage";
 import AdminSuppliersPage from "./pages/AdminSuppliersPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
 
 // Layout wrapper to include navigation bar for pages that need it
 function MainLayout({ children }) {
@@ -109,6 +110,20 @@ export default function App() {
           <ProtectedRoute roles={["admin"]}>
             <MainLayout>
               <GRNPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute roles={["admin"]}>
+            <MainLayout>
+              <div className="p-8 max-w-3xl mx-auto">
+                <h1 className="text-3xl font-bold mb-6">Store Settings</h1>
+                <AdminSettingsPage />
+              </div>
             </MainLayout>
           </ProtectedRoute>
         }

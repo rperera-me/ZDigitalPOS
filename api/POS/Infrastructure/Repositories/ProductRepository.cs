@@ -16,11 +16,10 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product> AddAsync(Product product)
         {
-            // ✅ REMOVED: PriceRetail and PriceWholesale from insert
-            var sql = @"INSERT INTO Products 
-                        (Barcode, Name, CategoryId, StockQuantity, HasMultipleProductPrices)
-                        VALUES 
-                        (@Barcode, @Name, @CategoryId, @StockQuantity, @HasMultipleProductPrices);
+            var sql = @"INSERT INTO Products
+                        (Barcode, Name, CategoryId, StockQuantity, HasMultipleProductPrices, IsBestSelling, MeasureType)
+                        VALUES
+                        (@Barcode, @Name, @CategoryId, @StockQuantity, @HasMultipleProductPrices, @IsBestSelling, @MeasureType);
                         SELECT CAST(SCOPE_IDENTITY() as int)";
 
             using var connection = _context.CreateConnection();
@@ -38,10 +37,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<IEnumerable<Product>> GetAllAsync()
         {
-            // ✅ REMOVED: PriceRetail and PriceWholesale from select
-            var sql = @"SELECT Id, Barcode, Name, CategoryId, 
-                        StockQuantity, HasMultipleProductPrices 
-                        FROM Products 
+            var sql = @"SELECT Id, Barcode, Name, CategoryId,
+                        StockQuantity, HasMultipleProductPrices, IsBestSelling, MeasureType
+                        FROM Products
                         ORDER BY Name";
 
             using var connection = _context.CreateConnection();
@@ -50,10 +48,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product?> GetByBarcodeAsync(string barcode)
         {
-            // ✅ REMOVED: PriceRetail and PriceWholesale from select
-            var sql = @"SELECT Id, Barcode, Name, CategoryId, 
-                        StockQuantity, HasMultipleProductPrices 
-                        FROM Products 
+            var sql = @"SELECT Id, Barcode, Name, CategoryId,
+                        StockQuantity, HasMultipleProductPrices, IsBestSelling, MeasureType
+                        FROM Products
                         WHERE Barcode = @Barcode";
 
             using var connection = _context.CreateConnection();
@@ -62,10 +59,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product?> GetByIdAsync(int id)
         {
-            // ✅ REMOVED: PriceRetail and PriceWholesale from select
-            var sql = @"SELECT Id, Barcode, Name, CategoryId, 
-                        StockQuantity, HasMultipleProductPrices 
-                        FROM Products 
+            var sql = @"SELECT Id, Barcode, Name, CategoryId,
+                        StockQuantity, HasMultipleProductPrices, IsBestSelling, MeasureType
+                        FROM Products
                         WHERE Id = @Id";
 
             using var connection = _context.CreateConnection();
@@ -74,10 +70,9 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<IEnumerable<Product>> GetByCategoryIdAsync(int categoryId)
         {
-            // ✅ REMOVED: PriceRetail and PriceWholesale from select
-            var sql = @"SELECT Id, Barcode, Name, CategoryId, 
-                        StockQuantity, HasMultipleProductPrices 
-                        FROM Products 
+            var sql = @"SELECT Id, Barcode, Name, CategoryId,
+                        StockQuantity, HasMultipleProductPrices, IsBestSelling, MeasureType
+                        FROM Products
                         WHERE CategoryId = @CategoryId
                         ORDER BY Name";
 
@@ -87,13 +82,14 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<Product> UpdateAsync(Product product)
         {
-            // ✅ REMOVED: PriceRetail and PriceWholesale from update
-            var sql = @"UPDATE Products 
-                        SET Barcode = @Barcode, 
-                            Name = @Name, 
+            var sql = @"UPDATE Products
+                        SET Barcode = @Barcode,
+                            Name = @Name,
                             CategoryId = @CategoryId,
                             StockQuantity = @StockQuantity,
-                            HasMultipleProductPrices = @HasMultipleProductPrices
+                            HasMultipleProductPrices = @HasMultipleProductPrices,
+                            IsBestSelling = @IsBestSelling,
+                            MeasureType = @MeasureType
                         WHERE Id = @Id";
 
             using var connection = _context.CreateConnection();
@@ -103,14 +99,32 @@ namespace PosSystem.Infrastructure.Repositories
 
         public async Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<int> productIds)
         {
-            // ✅ REMOVED: PriceRetail and PriceWholesale from select
-            var sql = @"SELECT Id, Barcode, Name, CategoryId, 
-                        StockQuantity, HasMultipleProductPrices 
-                        FROM Products 
+            var sql = @"SELECT Id, Barcode, Name, CategoryId,
+                        StockQuantity, HasMultipleProductPrices, IsBestSelling, MeasureType
+                        FROM Products
                         WHERE Id IN @Ids";
 
             using var connection = _context.CreateConnection();
             return await connection.QueryAsync<Product>(sql, new { Ids = productIds });
+        }
+
+        public async Task<IEnumerable<Product>> GetBestSellingAsync()
+        {
+            var sql = @"SELECT Id, Barcode, Name, CategoryId,
+                        StockQuantity, HasMultipleProductPrices, IsBestSelling, MeasureType
+                        FROM Products
+                        WHERE IsBestSelling = 1
+                        ORDER BY Name";
+
+            using var connection = _context.CreateConnection();
+            return await connection.QueryAsync<Product>(sql);
+        }
+
+        public async Task SetBestSellingAsync(int id, bool isBestSelling)
+        {
+            var sql = "UPDATE Products SET IsBestSelling = @IsBestSelling WHERE Id = @Id";
+            using var connection = _context.CreateConnection();
+            await connection.ExecuteAsync(sql, new { Id = id, IsBestSelling = isBestSelling });
         }
     }
 }

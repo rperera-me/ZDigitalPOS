@@ -4,6 +4,6 @@
     {
         public string Barcode { get; set; } = string.Empty;
         public string Item { get; set; } = string.Empty;
-        public int Available { get; set; }
+        public decimal Available { get; set; }
     }
 }

@@ -3,12 +3,14 @@ import authReducer from "./authSlice";
 import posReducer from "./posSlice";
 import dashboardReducer from "./dashboardSlice";
 import userReducer from "./userSlice";
+import settingsReducer from "./settingsSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     pos: posReducer,
     user: userReducer,
-    dashboard: dashboardReducer
+    dashboard: dashboardReducer,
+    settings: settingsReducer,
   },
 });

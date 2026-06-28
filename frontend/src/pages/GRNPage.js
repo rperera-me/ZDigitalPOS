@@ -50,6 +50,8 @@ export default function GRNPage() {
     const [selectedGRNToView, setSelectedGRNToView] = useState(null);
 
     const totalAmount = items.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
+    const selectedProduct = products.find(p => p.id === parseInt(selectedProductId));
+    const isKgProduct = selectedProduct?.measureType === "Kg";
     const creditAmount = paymentStatus === "unpaid"
         ? totalAmount
         : Math.max(0, totalAmount - parseFloat(paidAmount || 0));
@@ -72,8 +74,8 @@ export default function GRNPage() {
     };
 
     const addItem = () => {
-        if (!selectedProductId || !quantity || !costPrice || !productPrice) {
-            alert("Please fill all required fields (Product, Qty, Cost Price, Product Price)");
+        if (!selectedProductId || !quantity || !costPrice || (!isKgProduct && !productPrice)) {
+            alert("Please fill all required fields (Product, Qty, Cost Price" + (isKgProduct ? "" : ", Unit Price") + ")");
             return;
         }
 
@@ -85,7 +87,7 @@ export default function GRNPage() {
             barcode: product?.barcode || "",
             quantity: parseInt(quantity),
             costPrice: parseFloat(costPrice),
-            productPrice: parseFloat(productPrice),
+            productPrice: isKgProduct ? 0 : parseFloat(productPrice),
             manufactureDate: manufactureDate || null,
             expiryDate: expiryDate || null,
         };
@@ -397,6 +399,7 @@ export default function GRNPage() {
                                             placeholder="0"
                                             value={quantity}
                                             onChange={(e) => setQuantity(e.target.value)}
+                                            onWheel={(e) => e.target.blur()}
                                             className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                             min="1"
                                         />
@@ -411,26 +414,30 @@ export default function GRNPage() {
                                             placeholder="0.00"
                                             value={costPrice}
                                             onChange={(e) => setCostPrice(e.target.value)}
+                                            onWheel={(e) => e.target.blur()}
                                             className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                             step="0.01"
                                             min="0"
                                         />
                                     </div>
 
+                                    {!isKgProduct && (
                                     <div>
                                         <label className="block text-sm font-semibold mb-2 text-gray-700">
-                                            Selling Price (MRP) <span className="text-red-500">*</span>
+                                            Unit Price (MRP) <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="number"
                                             placeholder="0.00"
                                             value={productPrice}
                                             onChange={(e) => setProductPrice(e.target.value)}
+                                            onWheel={(e) => e.target.blur()}
                                             className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                             step="0.01"
                                             min="0"
                                         />
                                     </div>
+                                    )}
 
                                     <div>
                                         <label className="block text-sm font-semibold mb-2 text-gray-700">Manufacture Date</label>
@@ -570,6 +577,7 @@ export default function GRNPage() {
                                                         placeholder="0.00"
                                                         value={paidAmount}
                                                         onChange={(e) => setPaidAmount(e.target.value)}
+                                                        onWheel={(e) => e.target.blur()}
                                                         className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                                                         step="0.01"
                                                         min="0"
@@ -854,8 +862,8 @@ export default function GRNPage() {
 
             {/* Add Product Modal */}
             {showAddProductModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowAddProductModal(false)}>
+                    <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-2xl font-bold mb-4 text-gray-800">Add New Product</h3>
 
                         <div className="space-y-4">

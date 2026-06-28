@@ -16,7 +16,6 @@ import {
 } from "../app/posSlice";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import storeSetting from "../config/storeSettings";
 import {
   PaymentModal,
   LastSaleModal,
@@ -24,7 +23,8 @@ import {
   PriceSelectionModal,
   ReceiptModal,
   AddCustomerModal,
-  BillReprintModal
+  BillReprintModal,
+  WeightInputModal,
 } from "../components/modals";
 import TodaySalesPage from "./TodaySalesPage";
 
@@ -43,6 +43,7 @@ export default function CashierPage() {
   const currentCustomer = useSelector((state) => state.pos.currentCustomer);
   const selectedCategoryId = useSelector((state) => state.pos.selectedCategoryId);
   const user = useSelector((state) => state.auth.user);
+  const storeSetting = useSelector((state) => state.settings);
 
   // Local state
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,9 +84,9 @@ export default function CashierPage() {
 
   const [showBillReprintModal, setShowBillReprintModal] = useState(false);
 
-  const [selectedReceiptTemplate, setSelectedReceiptTemplate] = useState(
-    storeSetting.defaultReceiptTemplate || 'ReceiptTemplate'
-  );
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [weightProduct, setWeightProduct] = useState(null);
+
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -137,8 +138,11 @@ export default function CashierPage() {
             return;
           }
 
-          // If quantity mode is ON or product has multiple prices, show price modal
-          if (quantityMode || product.hasMultipleProductPrices) {
+          // Kg products always need weight entry; quantity-mode or multi-price → show price modal
+          if (product.measureType === "Kg" && !product.hasMultipleProductPrices) {
+            setWeightProduct(product);
+            setShowWeightModal(true);
+          } else if (quantityMode || product.hasMultipleProductPrices) {
             onAddProduct(product);
           } else {
             // Direct add with quantity 1 using oldest batch
@@ -222,7 +226,7 @@ export default function CashierPage() {
     setShowBillReprintModal(true);
   }
 
-  function addToCart(product, price, productPrice, quantity, sourceId = null, sellingPrice = null, wholesalePrice = null) {
+  function addToCart(product, price, productPrice, quantity, sourceId = null, sellingPrice = null, wholesalePrice = null, measureType = "Unit") {
     dispatch(
       addSaleItem({
         productId: typeof product === 'object' ? product.id : product,
@@ -233,8 +237,24 @@ export default function CashierPage() {
         regularPrice: productPrice,
         sellingPrice: sellingPrice !== null ? sellingPrice : price,
         wholesalePrice: wholesalePrice !== null ? wholesalePrice : price,
+        measureType: measureType,
       })
     );
+    refocusBarcodeInput();
+  }
+
+  function handleWeightConfirm(weightKg) {
+    if (!weightProduct) return;
+    const product = weightProduct;
+    const oldestBatch = product.batches[0];
+    const price = customerType === "wholesale"
+      ? oldestBatch.wholesalePrice
+      : oldestBatch.sellingPrice;
+    const productPrice = oldestBatch.productPrice;
+
+    addToCart(product, price, productPrice, weightKg, oldestBatch.id, oldestBatch.sellingPrice, oldestBatch.wholesalePrice, "Kg");
+    setShowWeightModal(false);
+    setWeightProduct(null);
     refocusBarcodeInput();
   }
 
@@ -259,6 +279,14 @@ export default function CashierPage() {
       refocusBarcodeInput();
       return;
     }
+
+    // Scale (kg) products with a single price: show weight entry dialog
+    if (product.measureType === "Kg" && !product.hasMultipleProductPrices) {
+      setWeightProduct(product);
+      setShowWeightModal(true);
+      return;
+    }
+
     if (product.hasMultipleProductPrices) {
       api.get(`/product/${product.id}/price-variants`)
         .then((res) => {
@@ -432,6 +460,7 @@ export default function CashierPage() {
           storeName: storeSetting.storeName,
           storeAddress: storeSetting.storeAddress,
           storeContact: storeSetting.storeContact,
+          storeLogo: storeSetting.storeLogo || "",
           saleItems: saved.saleItems.map(si => ({
             productId: si.productId,
             name: si.productName,
@@ -473,6 +502,7 @@ export default function CashierPage() {
         storeName: storeSetting.storeName,
         storeAddress: storeSetting.storeAddress,
         storeContact: storeSetting.storeContact,
+        storeLogo: storeSetting.storeLogo || "",
         saleItems: saleItems.map(({ productId, name, price, quantity, regularPrice }) => ({
           productId,
           name,
@@ -526,6 +556,7 @@ export default function CashierPage() {
           storeName: storeSetting.storeName,
           storeAddress: storeSetting.storeAddress,
           storeContact: storeSetting.storeContact,
+          storeLogo: storeSetting.storeLogo || "",
           cashier: res.data.cashierName || "",
           invoiceNo: res.data.invoiceNo || "",
           saleItems: (res.data.saleItems || []).map(si => ({
@@ -582,19 +613,21 @@ export default function CashierPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleBarcodeAdd]);
 
-  // Initial data fetch - Set "All" as default
+  // Initial data fetch - default to Best Selling view
   useEffect(() => {
     api.get("/category").then((res) => {
       dispatch(setCategories(res.data));
-      dispatch(setCategoryId(null));
+      dispatch(setCategoryId("best-selling"));
     });
     api.get("/customer").then((res) => dispatch(setCustomers(res.data)));
     fetchHoldSales();
   }, [dispatch, fetchHoldSales]);
 
-  // Fetch products when category changes
+  // Fetch products when category filter changes
   useEffect(() => {
-    if (selectedCategoryId) {
+    if (selectedCategoryId === "best-selling") {
+      api.get("/product/best-selling").then((res) => dispatch(setProducts(res.data)));
+    } else if (selectedCategoryId) {
       api.get(`/product/category/${selectedCategoryId}`).then((res) =>
         dispatch(setProducts(res.data))
       );
@@ -710,11 +743,17 @@ export default function CashierPage() {
           <div className="p-2 border-b bg-gray-50">
             <div className="flex gap-2">
               <select
-                value={selectedCategoryId || ""}
-                onChange={(e) => dispatch(setCategoryId(e.target.value ? parseInt(e.target.value) : null))}
+                value={selectedCategoryId ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "best-selling") dispatch(setCategoryId("best-selling"));
+                  else if (!val) dispatch(setCategoryId(null));
+                  else dispatch(setCategoryId(parseInt(val)));
+                }}
                 className="border p-1 rounded text-xs"
                 style={{ minWidth: "120px" }}
               >
+                <option value="best-selling">⭐ Best Selling</option>
                 <option value="">All Products</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
@@ -752,6 +791,12 @@ export default function CashierPage() {
                     onClick={() => onAddProduct(p)}
                     className="relative bg-white rounded-lg p-3 shadow-md hover:shadow-xl transition-all hover:scale-105 cursor-pointer border-2 border-gray-200 hover:border-blue-400 flex flex-col h-full"
                   >
+                    {/* Kg badge */}
+                    {p.measureType === "Kg" && (
+                      <span className="absolute top-1 right-1 text-xs bg-orange-100 text-orange-600 font-bold px-1.5 py-0.5 rounded-full leading-none">
+                        ⚖️kg
+                      </span>
+                    )}
                     {/* Product Name */}
                     <div className="flex-1 flex items-center justify-center mb-2 min-h-[3rem]">
                       <h3 className="font-bold text-gray-800 text-sm text-center line-clamp-2 px-1">
@@ -1053,21 +1098,27 @@ export default function CashierPage() {
                         {item.name}
                       </td>
                       <td className="text-center p-1">
-                        <div className="flex items-center justify-center gap-0.5">
-                          <button
-                            onClick={() => onUpdateQuantity(item.productId, item.sourceId, item.price, item.quantity - 1)}
-                            className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
-                          >
-                            −
-                          </button>
-                          <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
-                          <button
-                            onClick={() => onUpdateQuantity(item.productId, item.sourceId, item.price, item.quantity + 1)}
-                            className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
-                          >
-                            +
-                          </button>
-                        </div>
+                        {item.measureType === "Kg" ? (
+                          <span className="text-xs font-semibold text-orange-700">
+                            {parseFloat(item.quantity).toFixed(3)} kg
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-0.5">
+                            <button
+                              onClick={() => onUpdateQuantity(item.productId, item.sourceId, item.price, item.quantity - 1)}
+                              className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
+                            >
+                              −
+                            </button>
+                            <span className="w-6 text-center font-semibold text-xs">{item.quantity}</span>
+                            <button
+                              onClick={() => onUpdateQuantity(item.productId, item.sourceId, item.price, item.quantity + 1)}
+                              className="bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 text-xs"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td className="text-right p-1 text-xs text-gray-500">
                         Rs {(item.regularPrice || item.price).toFixed(2)}
@@ -1156,7 +1207,7 @@ export default function CashierPage() {
           refocusBarcodeInput();
         }}
         saleData={receiptData}
-        templateName={selectedReceiptTemplate}
+        templateName={storeSetting.defaultReceiptTemplate || 'ReceiptTemplate'}
       />
 
       {/* LAST SALE VIEW MODAL */}
@@ -1171,7 +1222,6 @@ export default function CashierPage() {
           setIsReceiptOpen(true);
         }}
         i18n={i18n}
-        storeSetting={storeSetting}
       />
 
       {/* HELD SALES MODAL */}
@@ -1197,6 +1247,7 @@ export default function CashierPage() {
         priceVariants={priceVariants}
         onSelectPrice={handlePriceSelect}
         customerType={customerType === "wholesale" ? "wholesale" : "retail"}
+        measureType={selectedProduct?.measureType || "Unit"}
       />
 
       <AddCustomerModal
@@ -1217,6 +1268,7 @@ export default function CashierPage() {
             storeName: storeSetting.storeName,
             storeAddress: storeSetting.storeAddress,
             storeContact: storeSetting.storeContact,
+            storeLogo: storeSetting.storeLogo || "",
             cashier: sale.cashierName || "",
             invoiceNo: sale.invoiceNo || "",
             saleItems: (sale.saleItems || []).map(si => ({
@@ -1228,6 +1280,17 @@ export default function CashierPage() {
           setShowTodaySales(false);
           setIsReceiptOpen(true);
         }}
+      />
+
+      <WeightInputModal
+        isOpen={showWeightModal}
+        onClose={() => {
+          setShowWeightModal(false);
+          setWeightProduct(null);
+          refocusBarcodeInput();
+        }}
+        product={weightProduct}
+        onConfirm={handleWeightConfirm}
       />
 
       <BillReprintModal
@@ -1243,6 +1306,7 @@ export default function CashierPage() {
             storeName: storeSetting.storeName,
             storeAddress: storeSetting.storeAddress,
             storeContact: storeSetting.storeContact,
+            storeLogo: storeSetting.storeLogo || "",
             cashier: sale.cashierName || "",
             invoiceNo: sale.invoiceNo || "",
             saleItems: (sale.saleItems || []).map(si => ({

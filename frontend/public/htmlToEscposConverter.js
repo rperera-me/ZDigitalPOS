@@ -1,5 +1,4 @@
 const { JSDOM } = require('jsdom');
-const Handlebars = require('handlebars');
 
 class HtmlToEscposConverter {
   constructor(printer) {
@@ -8,16 +7,11 @@ class HtmlToEscposConverter {
   }
 
   /**
-   * Convert HTML template to ESC/POS commands
-   * @param {string} htmlTemplate - Handlebars HTML template
-   * @param {object} data - Data to populate template
+   * Convert pre-rendered HTML to ESC/POS commands
+   * @param {string} renderedHtml - Already-rendered HTML string from the React receipt view
    */
-  async convert(htmlTemplate, data) {
-    // 1. Compile and render Handlebars template
-    const template = Handlebars.compile(htmlTemplate);
-    const renderedHtml = template(data);
-
-    // 2. Parse HTML
+  async convert(renderedHtml) {
+    // Parse HTML
     const dom = new JSDOM(renderedHtml);
     const document = dom.window.document;
 

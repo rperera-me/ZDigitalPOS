@@ -13,12 +13,3 @@ filesToCopy.forEach(({ from, to }) => {
   fs.copySync(path.join(__dirname, from), path.join(__dirname, to));
 });
 
-const templatesDir = 'public/templates';
-const buildTemplatesDir = 'build/templates';
-
-if (fs.existsSync(path.join(__dirname, templatesDir))) {
-  fs.copySync(
-    path.join(__dirname, templatesDir),
-    path.join(__dirname, buildTemplatesDir)
-  );
-}
